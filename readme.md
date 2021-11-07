@@ -1,7 +1,7 @@
-JustTokenizer
+Tokenizer
 =====
 
-Токенайзер — разбивает любую строку на последовательность любых токенов.
+Tokenizer — parse any string, slice or infinite buffer to any tokens stream.
 
 Основные способности:
 
@@ -20,12 +20,25 @@ JustTokenizer
 * Потоковый разбор данных на токены из бесконечного буффера.
 
 More examples:
-- [JSON parser](./example_test.go#)
+- [JSON parser](./example_test.go)
 
+Explain parsing:
 ```
 string: user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34
 tokens: |user_id| =| 119| and| modified| >| "2020-01-01 00:00:00"| or| amount| >=| 122.34|
         |   0   | 1|  2 |  3 |    4    | 5|            6         | 7 |    8  | 9 |    10 |
+
+0:  {key: TokenKeyword, value: "user_id"}                token.Value()          == "user_id"
+1:  {key: <your token>, value: "="}                      token.Value()          == "="
+2:  {key: TokenInteger, value: "119"}                    token.ValueInt()       == 119
+3:  {key: TokenKeyword, value: "and"}                    token.Value()          == "and"
+4:  {key: TokenKeyword, value: "modified"}               token.Value()          == "modified"
+5:  {key: <your token>, value: ">"}                      token.Value()          == ">"
+6:  {key: TokenString, value: "\"2020-01-01 00:00:00\""} token.ValueUnescaped() == "2020-01-01 00:00:00"
+7:  {key: TokenKeyword, value: "or"}                     token.Value()          == "and"
+8:  {key: TokenKeyword, value: "amount"}                 token.Value()          == "amount"
+9:  {key: <your token>, value: ">="}                     token.Value()          == ">="
+10: {key: TokenFloat, value: "122.34"}                   token.ValueFloat()     == 122.34
 ```
 
 ## Embedded tokens
@@ -33,9 +46,9 @@ tokens: |user_id| =| 119| and| modified| >| "2020-01-01 00:00:00"| or| amount| >
 - `tokenizer.TokenUnknown` — unspecified token key. 
 - `tokenizer.TokenKeyword` — keyword, any combination of letters, including unicode letters.
 - `tokenizer.TokenInteger` — integer value
-- `tokenizer.TokenDecimal` — float/double/decimal value
-- `tokenizer.TokenQuotedString` — quoted string
-- `tokenizer.TokenQuotedStringFragment` — fragment quoted string. Quoted string may be split by placeholders. 
+- `tokenizer.TokenFloat` — float/double/decimal value
+- `tokenizer.TokenString` — quoted string
+- `tokenizer.TokenStringFragment` — fragment quoted string. Quoted string may be split by placeholders. 
 
 ### Unknown tokens
 

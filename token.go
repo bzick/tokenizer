@@ -8,9 +8,9 @@ import (
 var undefToken = &Token{}
 
 type Token struct {
-	id  int
-	key int
-	value []byte
+	id     int
+	key    int
+	value  []byte
 	line   int
 	offset int
 	indent []byte
@@ -29,7 +29,7 @@ func (t *Token) addNext(next *Token) *Token {
 
 // remove this token from dl-list and fix links of prev and next nodes.
 // Method returns next token or nil if no next token found.
-func (t *Token) remove() *Token  {
+func (t *Token) remove() *Token {
 	next := t.next
 	t.next.prev = nil
 	t.next = nil
@@ -82,7 +82,7 @@ func (t Token) ValueInt() int64 {
 		num, _ := strconv.ParseInt(b2s(t.value), 10, 64)
 		return num
 	} else if t.key == TokenFloat {
-		num, _ := strconv.ParseFloat(b2s(t.value),  64)
+		num, _ := strconv.ParseFloat(b2s(t.value), 64)
 		return int64(num)
 	}
 	return 0
@@ -92,7 +92,7 @@ func (t Token) ValueInt() int64 {
 // If the token is not TokenInteger or TokenFloat zero will be returned.
 func (t *Token) ValueFloat() float64 {
 	if t.key == TokenFloat {
-		num, _ := strconv.ParseFloat(b2s(t.value),  64)
+		num, _ := strconv.ParseFloat(b2s(t.value), 64)
 		return num
 	} else if t.key == TokenInteger {
 		num, _ := strconv.ParseInt(b2s(t.value), 10, 64)
@@ -150,10 +150,10 @@ func (t Token) IsString() bool {
 	return t.key == TokenString || t.key == TokenStringFragment
 }
 
-// GetUnescapedString returns unquoted string without edge-quotes, escape symbol
+// ValueUnescapedString returns unquoted string without edge-quotes, escape symbol
 // but with conversion of escaped characters.
 // For example quoted string {"one \"two\"\t three"} transforms to {one "two"		three}
-func (t *Token) GetUnescapedString() string {
+func (t *Token) ValueUnescapedString() string {
 	if t.key == TokenString && t.string != nil {
 		from := 0
 		to := len(t.value)
@@ -167,7 +167,7 @@ func (t *Token) GetUnescapedString() string {
 		result := make([]byte, 0, len(str))
 		escaping := false
 		start := 0
-		for i:=0; i<len(str); i++ {
+		for i := 0; i < len(str); i++ {
 			if escaping {
 				if v, ok := t.string.SpecSymbols[string(str[i])]; ok {
 					result = append(result, t.value[start:i]...)
@@ -202,4 +202,3 @@ func (t *Token) Is(key int, keys ...int) bool {
 	}
 	return false
 }
-

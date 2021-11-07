@@ -7,12 +7,12 @@ import (
 )
 
 const (
-	TokenCurlyOpen = 1
-	TokenCurlyClose = 2
-	TokenSquareOpen = 3
+	TokenCurlyOpen   = 1
+	TokenCurlyClose  = 2
+	TokenSquareOpen  = 3
 	TokenSquareClose = 4
-	TokenColon = 5
-	TokenComma = 6
+	TokenColon       = 5
+	TokenComma       = 6
 )
 
 // Example of JSON parser via tokenizer.
@@ -45,12 +45,12 @@ func (parser *JsonParser) Parse(json []byte) (interface{}, error) {
 }
 
 func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
-	if stream.CurrentToken().Is(TokenCurlyOpen) {		// analyze objects like {"one": 2, "three": [4, 5]}
+	if stream.CurrentToken().Is(TokenCurlyOpen) { // analyze objects like {"one": 2, "three": [4, 5]}
 		stream.GoNext()
 		object := map[string]interface{}{}
 		for {
 			if stream.CurrentToken().Is(TokenString) { // checks if token is quoted string, then it is object's key
-				var key = stream.CurrentToken().GetUnescapedString()
+				var key = stream.CurrentToken().ValueUnescapedString()
 				var err error
 				if stream.GoNext().CurrentToken().Is(TokenColon) { // analyze key's value
 					if object[key], err = parser.analyzer(stream.GoNext()); err != nil {
@@ -97,15 +97,15 @@ func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
 				}
 			}
 		}
-	} else if stream.CurrentToken().Is(TokenInteger) { 	// analyze numbers
+	} else if stream.CurrentToken().Is(TokenInteger) { // analyze numbers
 		defer stream.GoNext()
 		return stream.CurrentToken().ValueInt(), nil
-	} else if stream.CurrentToken().Is(TokenFloat) {		// analyze floats
+	} else if stream.CurrentToken().Is(TokenFloat) { // analyze floats
 		defer stream.GoNext()
 		return stream.CurrentToken().ValueFloat(), nil
 	} else if stream.CurrentToken().Is(TokenString) { // analyze strings
 		defer stream.GoNext()
-		return stream.CurrentToken().GetUnescapedString(), nil
+		return stream.CurrentToken().ValueUnescapedString(), nil
 	} else {
 		return nil, parser.error(stream)
 	}
@@ -127,8 +127,8 @@ func TestJsonParser(t *testing.T) {
 	data, err := parser.Parse([]byte(`{"one": 1, "two": "three", "four": [5, "six", 7.8, {}]}`))
 	require.NoError(t, err)
 	require.Equal(t, map[string]interface{}{
-		"one": int64(1),
-		"two": "three",
+		"one":  int64(1),
+		"two":  "three",
 		"four": []interface{}{int64(5), "six", 7.8, map[string]interface{}{}},
 	}, data)
 }

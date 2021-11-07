@@ -25,7 +25,7 @@ func TestStream(t *testing.T) {
 	require.Equal(t, TokenKeyword, stream.CurrentToken().Key())
 	require.Equal(t, []byte("field_a"), stream.CurrentToken().Value())
 	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
-	require.Equal(t, "", stream.CurrentToken().GetUnescapedString())
+	require.Equal(t, "", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, []byte(nil), stream.CurrentToken().Indent())
 
 	require.Equal(t, condTokenKey, stream.NextToken().Key())
@@ -39,7 +39,7 @@ func TestStream(t *testing.T) {
 	require.Equal(t, []byte(">"), stream.CurrentToken().Value())
 	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
 	require.Equal(t, float64(0.0), stream.CurrentToken().ValueFloat())
-	require.Equal(t, "", stream.CurrentToken().GetUnescapedString())
+	require.Equal(t, "", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, []byte(" "), stream.CurrentToken().Indent())
 
 	require.False(t, stream.GoNextIfNextIs(TokenKeyword))
@@ -48,12 +48,12 @@ func TestStream(t *testing.T) {
 	require.Equal(t, TokenInteger, stream.CurrentToken().Key())
 	require.Equal(t, int64(10), stream.CurrentToken().ValueInt())
 	require.Equal(t, float64(10.0), stream.CurrentToken().ValueFloat())
-	require.Equal(t, "", stream.CurrentToken().GetUnescapedString())
+	require.Equal(t, "", stream.CurrentToken().ValueUnescapedString())
 
 	stream.GoNext()
 
 	require.Equal(t, TokenString, stream.CurrentToken().Key())
 	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
 	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat())
-	require.Equal(t, "value1", stream.CurrentToken().GetUnescapedString())
+	require.Equal(t, "value1", stream.CurrentToken().ValueUnescapedString())
 }
