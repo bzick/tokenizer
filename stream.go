@@ -6,32 +6,32 @@ import (
 )
 
 type Stream struct {
-	t       *Tokenizer
+	t *Tokenizer
 	// count of tokens in the stream
-	len     int
+	len int
 	// pointer to the node of double-linked list of tokens
 	current *Token
 	// pointer of valid token if current moved to out of bounds (out of end list)
-	prev 	*Token
+	prev *Token
 	// pointer of valid token if current moved to out of bounds (out of begin list)
-	next 	*Token
+	next *Token
 	// pointer to head of list
-	head    *Token
+	head *Token
 
 	// last whitespaces before end of source
-	wsTail 	[]byte
+	wsTail []byte
 	// count of parsed bytes
-	parsed  int
+	parsed int
 
-	p *parsing
+	p           *parsing
 	historySize int
 }
 
 // NewStream creates new parsed stream of tokens.
 func NewStream(p *parsing) *Stream {
 	return &Stream{
-		t: 	     p.t,
-		head: 	 p.head,
+		t:       p.t,
+		head:    p.head,
 		current: p.head,
 		len:     p.n,
 		wsTail:  p.tail,
@@ -41,32 +41,35 @@ func NewStream(p *parsing) *Stream {
 
 func NewInfStream(p *parsing) *Stream {
 	return &Stream{
-		t: p.t,
-		p: p,
+		t:   p.t,
+		p:   p,
+		len: p.n,
 	}
 }
 
+func (s *Stream) SetHistorySize(size int) {
+	s.historySize = size
+}
+
+// Close free all token objects to pool
 func (s *Stream) Close() {
-	for ptr := s.head; ptr != nil;  {
+	for ptr := s.head; ptr != nil; {
 		p := ptr.next
-		ptr.next = nil
-		ptr.prev = nil
-		ptr.value = nil
-		ptr.indent = nil
-		ptr.offset = 0
-		ptr.line = 0
-		ptr.id = 0
-		ptr.key = 0
-		ptr.string = nil
+		s.t.putToken(ptr)
 		ptr = p
 	}
+	s.next = nil
+	s.prev = nil
+	s.head = undefToken
+	s.current = undefToken
+	s.len = 0
 }
 
 func (s *Stream) String() string {
 	items := make([]string, s.len)
 	ptr := s.current
 	for ptr != nil {
-		items = append(items, strconv.Itoa(ptr.id) + ": " + ptr.String())
+		items = append(items, strconv.Itoa(ptr.id)+": "+ptr.String())
 		ptr = ptr.next
 	}
 
@@ -82,12 +85,23 @@ func (s *Stream) GetParsedLength() int {
 func (s *Stream) GoNext() *Stream {
 	if s.current.next != nil {
 		s.current = s.current.next
-	} else if s.current == nil {
+		if s.current.next == nil && s.p != nil { // lazy load and parse next data-chunk
+			n := s.p.n
+			s.p.parse()
+			s.len += s.p.n - n
+		}
+		if s.historySize != 0 && s.current.id-s.head.id > s.historySize {
+			t := s.head
+			s.head = s.head.unlink()
+			s.t.putToken(t)
+			s.len--
+		}
+	} else if s.current == undefToken {
 		s.current = s.prev
-		s.next = nil
+		s.prev = nil
 	} else {
 		s.prev = s.current
-		s.current = nil
+		s.current = undefToken
 	}
 	return s
 }
@@ -96,12 +110,12 @@ func (s *Stream) GoNext() *Stream {
 func (s *Stream) GoPrev() *Stream {
 	if s.current.prev != nil {
 		s.current = s.current.prev
-	} else if s.current == nil {
+	} else if s.current == undefToken {
 		s.current = s.next
 		s.prev = nil
 	} else {
 		s.next = s.current
-		s.current = nil
+		s.current = undefToken
 	}
 	return s
 }
@@ -120,12 +134,14 @@ func (s *Stream) GoTo(n int) *Stream {
 	return s
 }
 
-
-
 // IsValid checks if stream is valid.
 // This means that the pointer has not reached the end of the stream.
 func (s *Stream) IsValid() bool {
-	return s.current != nil
+	return s.current != undefToken
+}
+
+func (s *Stream) HeadToken() *Token {
+	return s.head
 }
 
 // CurrentToken always returns the token.
@@ -135,22 +151,22 @@ func (s *Stream) CurrentToken() *Token {
 	return s.current
 }
 
-// PrevToken returns previous token in the stream.
+// PrevToken returns previous token from the stream.
 // If previous token doesn't exist method return TypeUndef token.
 // Do not save result (Token) into variables — previous token may be changed at any time.
 func (s *Stream) PrevToken() *Token {
-	if s.current != nil && s.current.prev != nil {
+	if s.current.prev != nil {
 		return s.current.prev
 	} else {
 		return undefToken
 	}
 }
 
-// NextToken returns next token in the stream.
+// NextToken returns next token from the stream.
 // If next token doesn't exist method return TypeUndef token.
 // Do not save result (Token) into variables — next token may be changed at any time.
 func (s *Stream) NextToken() *Token {
-	if s.current != nil && s.current.next != nil {
+	if s.current.next != nil {
 		return s.current.next
 	} else {
 		return undefToken
@@ -172,13 +188,13 @@ func (s *Stream) GoNextIfNextIs(key int, otherKeys ...int) bool {
 // Slice generated from current token position and include tokens before and after current token.
 func (s *Stream) GetSegment(before, after int) []Token {
 	var segment []Token
-	if before > s.current.id - s.head.id {
+	if before > s.current.id-s.head.id {
 		before = s.current.id - s.head.id
 	}
-	if after > s.len - before - 1 {
+	if after > s.len-before-1 {
 		after = s.len - before - 1
 	}
-	segment = make([]Token, before + after + 1)
+	segment = make([]Token, before+after+1)
 	var ptr *Token
 	if s.next != nil {
 		ptr = s.next
@@ -189,10 +205,10 @@ func (s *Stream) GetSegment(before, after int) []Token {
 	}
 	for p := ptr; p != nil; p, before = ptr.prev, before-1 {
 		segment[before] = Token{
-			id: ptr.id,
-			key: ptr.key,
-			value: ptr.value,
-			line: ptr.line,
+			id:     ptr.id,
+			key:    ptr.key,
+			value:  ptr.value,
+			line:   ptr.line,
 			offset: ptr.offset,
 			indent: ptr.indent,
 			string: ptr.string,
@@ -202,11 +218,11 @@ func (s *Stream) GetSegment(before, after int) []Token {
 		}
 	}
 	for p, i := ptr.next, 1; p != nil; p, i = p.next, i+1 {
-		segment[before + i] = Token{
-			id: p.id,
-			key: p.key,
-			value: p.value,
-			line: p.line,
+		segment[before+i] = Token{
+			id:     p.id,
+			key:    p.key,
+			value:  p.value,
+			line:   p.line,
 			offset: p.offset,
 			indent: p.indent,
 			string: p.string,

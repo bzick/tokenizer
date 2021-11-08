@@ -31,7 +31,7 @@ const (
 )
 
 const (
-	fStopOnUnknown 		    = 0b1
+	fStopOnUnknown          = 0b1
 	fAllowKeywordUnderscore = 0b10
 	fAllowNumberUnderscore  = 0b100
 	fAllowNumberInKeyword   = 0b1000
@@ -39,16 +39,16 @@ const (
 
 var defaultWhiteSpaces = []byte{' ', '\t', '\n', '\r'}
 var DefaultStringEscapes = map[string]byte{
-	"n": '\n',
-	"r": '\r',
-	"t": '\t',
+	"n":  '\n',
+	"r":  '\r',
+	"t":  '\t',
 	"\\": '\\',
 }
 
 // TokenSettings describes one token.
 type TokenSettings struct {
 	// Token type. Not unique.
-	Key   int
+	Key int
 	// Token value as is. Should be unique.
 	Token []byte
 }
@@ -88,13 +88,13 @@ func (q *QuoteSettings) SetSpecialSymbols(special map[string]byte) *QuoteSetting
 
 type Tokenizer struct {
 	// bit flags
-	flags 		uint16
+	flags uint16
 	// all defined custom tokens
-	tokens      []TokenSettings
+	tokens []TokenSettings
 	//
 	tokensMap map[int][]*TokenSettings
-	quotes []*QuoteSettings
-	wSpaces []byte
+	quotes    []*QuoteSettings
+	wSpaces   []byte
 
 	pool sync.Pool
 }
@@ -102,11 +102,11 @@ type Tokenizer struct {
 // New creates new tokenizer.
 func New() *Tokenizer {
 	t := Tokenizer{
-		flags: 		0,
-		tokens:      []TokenSettings{},
-		tokensMap:   map[int][]*TokenSettings{},
-		quotes:      []*QuoteSettings{},
-		wSpaces:     defaultWhiteSpaces,
+		flags:     0,
+		tokens:    []TokenSettings{},
+		tokensMap: map[int][]*TokenSettings{},
+		quotes:    []*QuoteSettings{},
+		wSpaces:   defaultWhiteSpaces,
 	}
 	t.pool.New = func() interface{} {
 		return new(Token)
@@ -152,7 +152,7 @@ func (t *Tokenizer) AddToken(key int, tokens []string) *Tokenizer {
 			Key:   key,
 			Token: s2b(token),
 		})
-		t.tokensMap[key] = append(t.tokensMap[key], &t.tokens[len(t.tokens) - 1])
+		t.tokensMap[key] = append(t.tokensMap[key], &t.tokens[len(t.tokens)-1])
 	}
 	return t
 }
@@ -177,6 +177,23 @@ func (t *Tokenizer) AddString(startToken, endToken string) *QuoteSettings {
 	return q
 }
 
+func (t *Tokenizer) getToken() *Token {
+	return t.pool.Get().(*Token)
+}
+
+func (t *Tokenizer) putToken(token *Token) {
+	token.next = nil
+	token.prev = nil
+	token.value = nil
+	token.indent = nil
+	token.offset = 0
+	token.line = 0
+	token.id = 0
+	token.key = 0
+	token.string = nil
+	t.pool.Put(token)
+}
+
 // ParseString parse the string into tokens
 func (t *Tokenizer) ParseString(str string) *Stream {
 	return t.ParseBytes(s2b(str))
@@ -195,6 +212,6 @@ type ParseSettings struct {
 
 func (t *Tokenizer) ParseStream(r io.Reader, bufferSize uint) *Stream {
 	p := newInfParser(t, r, bufferSize)
-	p.loadChunk()
+	p.preload()
 	return NewInfStream(p)
 }

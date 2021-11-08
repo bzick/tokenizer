@@ -6,62 +6,60 @@ import (
 	"unicode/utf8"
 )
 
-const defaultBufferSize = 4096
+const DefaultChunkSize = 4096
 
 // parsing is main parser
 type parsing struct {
-	t *Tokenizer
-	pos      int
-	line     int
-	str      []byte
-	buffer   []byte
-	err      error
-	reader   io.Reader
-	token    *Token
-	head     *Token
-	ptr      *Token
-	quoted   bool
-	tail     []byte
-	stopKeys []*TokenSettings
-	n 		 int
-	bufferSize int
+	t         *Tokenizer
+	pos       int
+	line      int
+	str       []byte
+	buffer    []byte
+	err       error
+	reader    io.Reader
+	token     *Token
+	head      *Token
+	ptr       *Token
+	quoted    bool
+	tail      []byte
+	stopKeys  []*TokenSettings
+	n         int
+	chunkSize int
 }
 
 func newParser(t *Tokenizer, str []byte) *parsing {
+	tok := t.getToken()
+	tok.line = 1
 	return &parsing{
-		t: t,
-		str: str,
-		line: 1,
-		token: &Token{
-			id: 0,
-			line: 1,
-		},
+		t:     t,
+		str:   str,
+		line:  1,
+		token: tok,
 	}
 }
 
 func newInfParser(t *Tokenizer, reader io.Reader, bufferSize uint) *parsing {
 	if bufferSize == 0 {
-		bufferSize = defaultBufferSize
+		bufferSize = DefaultChunkSize
 	}
-	buffer := make([]byte, 0, bufferSize * 2)
+	buffer := make([]byte, 0, bufferSize*2)
+	tok := t.getToken()
+	tok.line = 1
 	return &parsing{
-		t: t,
-		str: buffer,
-		buffer: buffer,
-		reader: reader,
-		line: 1,
-		bufferSize: int(bufferSize),
-		token: &Token{
-			id: 0,
-			line: 1,
-		},
+		t:         t,
+		str:       buffer,
+		buffer:    buffer,
+		reader:    reader,
+		line:      1,
+		chunkSize: int(bufferSize),
+		token:     tok,
 	}
 }
 
 func (p *parsing) preload() {
 	n, err := p.reader.Read(p.str)
-	if n < p.bufferSize {
-		p.str = p.str[:p.bufferSize+n]
+	if n < p.chunkSize {
+		p.str = p.str[:p.chunkSize+n]
 		p.reader = nil
 	}
 	if err != nil {
@@ -72,16 +70,16 @@ func (p *parsing) preload() {
 	}
 }
 
-func (p *parsing) loadChunk() {
-	if p.pos < p.bufferSize {
-		return
+func (p *parsing) loadChunk() bool {
+	if p.reader == nil || p.pos < p.chunkSize {
+		return true
 	}
-	copy(p.str, p.str[p.bufferSize:])
-	p.pos -= p.bufferSize
-	n, err := p.reader.Read(p.str[p.bufferSize:])
+	copy(p.str, p.str[p.chunkSize:])
+	p.pos -= p.chunkSize
+	n, err := p.reader.Read(p.str[p.chunkSize:])
 
-	if n < p.bufferSize {
-		p.str = p.str[:p.bufferSize+n]
+	if n < p.chunkSize {
+		p.str = p.str[:p.chunkSize+n]
 		p.reader = nil
 	}
 
@@ -91,11 +89,12 @@ func (p *parsing) loadChunk() {
 			p.err = err
 		}
 	}
+	return false
 }
 
-// parse bytes (p.str) to tokens (p.list)
+// parse bytes (p.str) to tokens and append them to the end if stream of tokens.
 func (p *parsing) parse() {
-	for {
+	for p.loadChunk() {
 		if p.stopKeys != nil {
 			for _, t := range p.stopKeys {
 				if p.ptr.key == t.Key {
@@ -131,11 +130,11 @@ func (p *parsing) parse() {
 		if p.pos >= len(p.str) {
 			break
 		}
-		if p.t.flags & fStopOnUnknown != 0 {
+		if p.t.flags&fStopOnUnknown != 0 {
 			break
 		}
 		p.token.key = TokenUnknown
-		p.token.value = p.str[p.pos:p.pos+1]
+		p.token.value = p.str[p.pos : p.pos+1]
 		p.token.offset = p.pos
 		p.pos++
 		p.emmitToken()
@@ -183,8 +182,8 @@ func (p *parsing) parseKeyword() bool {
 	for p.pos < len(p.str) {
 		r, size := utf8.DecodeRune(p.str[p.pos:])
 		if unicode.IsLetter(r) ||
-			(p.t.flags & fAllowKeywordUnderscore != 0 && p.str[p.pos] == '_') ||
-			(p.t.flags & fAllowNumberInKeyword != 0 && start != -1 && isNumberByte(p.str[p.pos])) {
+			(p.t.flags&fAllowKeywordUnderscore != 0 && p.str[p.pos] == '_') ||
+			(p.t.flags&fAllowNumberInKeyword != 0 && start != -1 && isNumberByte(p.str[p.pos])) {
 
 			if start == -1 {
 				start = p.pos
@@ -226,7 +225,7 @@ func (p *parsing) parseNumber() bool {
 					start = p.pos
 				}
 			}
-		} else if p.t.flags & fAllowNumberUnderscore != 0 && p.str[p.pos] == '_' {
+		} else if p.t.flags&fAllowNumberUnderscore != 0 && p.str[p.pos] == '_' {
 			// todo checks double underscore
 		} else if !needNumber && p.str[p.pos] == '.' {
 			if stage != stageCoefficient {
@@ -239,15 +238,15 @@ func (p *parsing) parseNumber() bool {
 				break
 			}
 			ePowSign := false
-			if p.pos + 1 < len(p.str) {
-				switch p.str[p.pos + 1] {
+			if p.pos+1 < len(p.str) {
+				switch p.str[p.pos+1] {
 				case '-', '+':
 					ePowSign = true
 					p.pos++
 				}
 			}
 			needNumber = true
-			if p.pos + 1 < len(p.str) && isNumberByte(p.str[p.pos + 1]) {
+			if p.pos+1 < len(p.str) && isNumberByte(p.str[p.pos+1]) {
 				stage = stagePower
 			} else {
 				if ePowSign { // rollback sign position
@@ -321,11 +320,11 @@ func (p *parsing) parseQuote() bool {
 				for _, token := range p.t.tokensMap[inject.StartKey] {
 					if p.match(token.Token, true) {
 						p.token.key = TokenStringFragment
-						p.token.value = p.str[start:p.pos-len(token.Token)]
+						p.token.value = p.str[start : p.pos-len(token.Token)]
 						p.emmitToken()
 						p.token.key = token.Key
 						p.token.value = token.Token
-						p.token.offset = p.pos-len(token.Token)
+						p.token.offset = p.pos - len(token.Token)
 						p.emmitToken()
 						stopKeys := p.stopKeys // may be recursive quotes
 						p.stopKeys = p.t.tokensMap[inject.EndKey]
@@ -375,8 +374,8 @@ func (p *parsing) parseToken() bool {
 func (p *parsing) isNext(s []byte, seek bool) bool {
 	i := 1
 	for _, c := range s {
-		if p.pos + i < len(p.str) {
-			if c != p.str[p.pos + i] {
+		if p.pos+i < len(p.str) {
+			if c != p.str[p.pos+i] {
 				return false
 			}
 			i++
@@ -399,11 +398,7 @@ func (p *parsing) emmitToken() {
 		p.ptr = p.ptr.addNext(p.token)
 	}
 	p.n++
-	p.token = &Token{
-		id: p.n,
-		line: p.line,
-	}
+	p.token = p.t.getToken()
+	p.token.id = p.n
+	p.token.line = p.line
 }
-
-
-

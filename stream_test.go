@@ -57,3 +57,51 @@ func TestStream(t *testing.T) {
 	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat())
 	require.Equal(t, "value1", stream.CurrentToken().ValueUnescapedString())
 }
+
+func TestHistory(t *testing.T) {
+	tokenizer := New()
+	tokens := tokenizer.ParseString("0 1 2 3 4 5 6 7 8 9")
+	tokens.SetHistorySize(3)
+
+	require.Equal(t, 0, tokens.CurrentToken().Id())
+	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt())
+	require.Equal(t, 0, tokens.HeadToken().Id())
+	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
+	require.Equal(t, 10, tokens.len)
+
+	tokens.GoNext()
+	tokens.GoNext()
+
+	require.Equal(t, 2, tokens.CurrentToken().Id())
+	require.Equal(t, int64(2), tokens.CurrentToken().ValueInt())
+	require.Equal(t, 0, tokens.HeadToken().Id())
+	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
+	require.Equal(t, 10, tokens.len)
+
+	tokens.GoNext()
+	tokens.GoNext()
+
+	require.Equal(t, 4, tokens.CurrentToken().Id())
+	require.Equal(t, int64(4), tokens.CurrentToken().ValueInt())
+	require.Equal(t, 1, tokens.HeadToken().Id())
+	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
+	require.Equal(t, 9, tokens.len)
+
+	tokens.GoPrev()
+	tokens.GoPrev()
+	tokens.GoPrev()
+
+	require.Equal(t, 1, tokens.CurrentToken().Id())
+	require.Equal(t, int64(1), tokens.CurrentToken().ValueInt())
+	require.Equal(t, 1, tokens.HeadToken().Id())
+	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
+	require.Equal(t, 9, tokens.len)
+
+	tokens.GoPrev()
+
+	require.Equal(t, -1, tokens.CurrentToken().Id())
+	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt())
+	require.Equal(t, 1, tokens.HeadToken().Id())
+	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
+	require.Equal(t, 9, tokens.len)
+}

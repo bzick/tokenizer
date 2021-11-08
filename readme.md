@@ -3,18 +3,18 @@ Tokenizer
 
 Tokenizer — parse any string, slice or infinite buffer to any tokens stream.
 
-Основные способности:
+Main features:
 
-* Высокая производительность.
+* High performance.
 * Не выделяет память при разборе строки.
-* Не использует регулярные выражения.
-* Поддержка целых и дробных чисел.
-* Поддержка строк в кавычках.
-* Поддержка подстановок в строках с кавычками.
-* Работа с unicode.
-* Выделение любых ваших токенов.
-* Удобное Go API для анализа потока токенов.
-* Автоматическая обработка пробелов.
+* No regexp.
+* Provides simple API.
+* Support integer and float numbers.
+* Support quoted string.
+* Support token injection in quoted strings.
+* Support unicode.
+* Customization of tokens.
+* Autodetect white space symbols.
 * Можно парсить любой язык программирования.
 * Единичный проход всей строки данных.
 * Потоковый разбор данных на токены из бесконечного буффера.
@@ -24,7 +24,7 @@ More examples:
 
 Explain parsing:
 ```
-string: user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34
+string:  user_id  =  119  and  modified  >  "2020-01-01 00:00:00"  or  amount  >=  122.34
 tokens: |user_id| =| 119| and| modified| >| "2020-01-01 00:00:00"| or| amount| >=| 122.34|
         |   0   | 1|  2 |  3 |    4    | 5|            6         | 7 |    8  | 9 |    10 |
 

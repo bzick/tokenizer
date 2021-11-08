@@ -5,7 +5,9 @@ import (
 	"strconv"
 )
 
-var undefToken = &Token{}
+var undefToken = &Token{
+	id: -1,
+}
 
 type Token struct {
 	id     int
@@ -27,9 +29,9 @@ func (t *Token) addNext(next *Token) *Token {
 	return next
 }
 
-// remove this token from dl-list and fix links of prev and next nodes.
+// unlink remove token from dl-list and fix links of prev and next nodes.
 // Method returns next token or nil if no next token found.
-func (t *Token) remove() *Token {
+func (t *Token) unlink() *Token {
 	next := t.next
 	t.next.prev = nil
 	t.next = nil
@@ -150,7 +152,7 @@ func (t Token) IsString() bool {
 	return t.key == TokenString || t.key == TokenStringFragment
 }
 
-// ValueUnescapedString returns unquoted string without edge-quotes, escape symbol
+// ValueUnescapedString returns 'unquoted' string without edge-quotes, escape symbols
 // but with conversion of escaped characters.
 // For example quoted string {"one \"two\"\t three"} transforms to {one "two"		three}
 func (t *Token) ValueUnescapedString() string {
