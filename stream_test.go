@@ -1,6 +1,8 @@
 package tokenizer
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -104,4 +106,65 @@ func TestHistory(t *testing.T) {
 	require.Equal(t, 1, tokens.HeadToken().Id())
 	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
 	require.Equal(t, 9, tokens.len)
+}
+
+func TestInfStream(t *testing.T) {
+	buffer := bytes.NewBuffer(nil)
+	for i := 0; i < 100; i++ {
+		buffer.Write([]byte(fmt.Sprintf(`{id: %d, key: "object number %d"}`, i, i)))
+	}
+
+	tokenizer := New()
+	commaKey := 10
+	colonKey := 11
+	openKey := 12
+	closeKey := 13
+	tokenizer.AddToken(commaKey, []string{","})
+	tokenizer.AddToken(colonKey, []string{":"})
+	tokenizer.AddToken(openKey, []string{"{"})
+	tokenizer.AddToken(closeKey, []string{"}"})
+	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
+
+	stream := tokenizer.ParseStream(buffer, 100)
+
+	n := 0
+	for stream.IsValid() {
+		require.True(t, stream.CurrentToken().Is(openKey))
+		stream.GoNext()
+
+		require.True(t, stream.CurrentToken().Is(TokenKeyword))
+		require.Equal(t, []byte("id"), stream.CurrentToken().Value())
+		stream.GoNext()
+
+		require.True(t, stream.CurrentToken().Is(colonKey))
+		stream.GoNext()
+
+		require.True(t, stream.CurrentToken().Is(TokenInteger))
+		id := stream.CurrentToken().ValueInt()
+		stream.GoNext()
+
+		require.True(t, stream.CurrentToken().Is(commaKey))
+		stream.GoNext()
+
+		require.True(t, stream.CurrentToken().Is(TokenKeyword))
+		require.Equal(t, []byte("key"), stream.CurrentToken().Is(TokenKeyword))
+		stream.GoNext()
+
+		require.True(t, stream.CurrentToken().Is(colonKey))
+		stream.GoNext()
+
+		require.True(t, stream.CurrentToken().Is(TokenString))
+		require.Equal(t, fmt.Sprintf("object number %d", id), stream.CurrentToken().ValueUnescapedString())
+		stream.GoNext()
+
+		require.True(t, stream.CurrentToken().Is(closeKey))
+
+		n++
+		if n >= 100 {
+			break
+		}
+
+		require.Equal(t, 100, n)
+	}
+
 }

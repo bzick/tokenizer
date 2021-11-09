@@ -6,7 +6,7 @@ Tokenizer — parse any string, slice or infinite buffer to any tokens stream.
 Main features:
 
 * High performance.
-* Не выделяет память при разборе строки.
+* Low memory allocation
 * No regexp.
 * Provides simple API.
 * Support integer and float numbers.
@@ -15,9 +15,9 @@ Main features:
 * Support unicode.
 * Customization of tokens.
 * Autodetect white space symbols.
-* Можно парсить любой язык программирования.
+* Parse any data syntax (xml, json, yaml), any programming language.
 * Единичный проход всей строки данных.
-* Потоковый разбор данных на токены из бесконечного буффера.
+* Parse infinite data.
 
 More examples:
 - [JSON parser](./example_test.go)

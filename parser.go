@@ -42,7 +42,7 @@ func newInfParser(t *Tokenizer, reader io.Reader, bufferSize uint) *parsing {
 	if bufferSize == 0 {
 		bufferSize = DefaultChunkSize
 	}
-	buffer := make([]byte, 0, bufferSize*2)
+	buffer := make([]byte, bufferSize*2)
 	tok := t.getToken()
 	tok.line = 1
 	return &parsing{

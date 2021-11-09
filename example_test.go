@@ -149,3 +149,17 @@ func BenchmarkSandbox(b *testing.B) {
 	}
 	b.Logf("%d) length %d, capacity %d (max %d)", b.N, len(a), cap(a), max)
 }
+
+func TestSandbox(t *testing.T) {
+	a := make([]int, 100)
+	for i, _ := range a {
+		a[i] = i
+	}
+
+	b := a[10:12]
+	a = a[50:]
+	a = append(a, 1002, 1003, 1004)
+
+	t.Logf("a: length %d, capacity %d: %v", len(a), cap(a), a)
+	t.Logf("b: length %d, capacity %d: %v", len(b), cap(b), b)
+}

@@ -213,5 +213,6 @@ type ParseSettings struct {
 func (t *Tokenizer) ParseStream(r io.Reader, bufferSize uint) *Stream {
 	p := newInfParser(t, r, bufferSize)
 	p.preload()
+	p.parse()
 	return NewInfStream(p)
 }

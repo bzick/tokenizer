@@ -41,9 +41,11 @@ func NewStream(p *parsing) *Stream {
 
 func NewInfStream(p *parsing) *Stream {
 	return &Stream{
-		t:   p.t,
-		p:   p,
-		len: p.n,
+		t:       p.t,
+		p:       p,
+		len:     p.n,
+		head:    p.head,
+		current: p.head,
 	}
 }
 
