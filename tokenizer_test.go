@@ -7,7 +7,7 @@ import (
 
 func TestTokenize(t *testing.T) {
 	type item struct {
-		str string
+		str   string
 		token Token
 	}
 	tokenizer := New()
@@ -42,9 +42,9 @@ func TestTokenize(t *testing.T) {
 		stream := tokenizer.ParseBytes([]byte(v.str))
 		expected := &v.token
 		expected.value = []byte(v.str)
-		actual :=  &Token{
-			value: stream.current.value,
-			key: stream.current.key,
+		actual := &Token{
+			value:  stream.current.value,
+			key:    stream.current.key,
 			string: stream.current.string,
 		}
 		require.Equalf(t, expected, actual, "parse %s: %s", v.str, stream.current)
@@ -53,7 +53,7 @@ func TestTokenize(t *testing.T) {
 
 func TestTokenizeEdgeCases(t *testing.T) {
 	type item struct {
-		str string
+		str    string
 		tokens []Token
 	}
 	tokenizer := New()
@@ -106,7 +106,7 @@ func TestTokenizeComplex(t *testing.T) {
 	tokenizer.AllowKeywordUnderscore()
 	tokenizer.AddToken(compareTokenKey, []string{">=", "<=", "==", ">", "<", "="})
 	tokenizer.AddToken(condTokenKey, []string{"and", "or"})
-	quote  := tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
+	quote := tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
 	quote2 := tokenizer.AddString("'", "'").SetEscapeSymbol('\\')
 
 	str := "modified >\t\"2021-10-06 12:30:44\" and \nbytes_in <= 100 or user_agent='curl'"
@@ -114,95 +114,95 @@ func TestTokenizeComplex(t *testing.T) {
 
 	require.Equalf(t, []Token{
 		{
-			id: 0,
+			id:     0,
 			key:    TokenKeyword,
 			value:  []byte("modified"),
 			offset: 0,
-			line: 1,
+			line:   1,
 		},
 		{
-			id: 1,
+			id:     1,
 			key:    compareTokenKey,
 			value:  []byte(">"),
 			indent: []byte(" "),
 			offset: 9,
-			line: 1,
+			line:   1,
 		},
 		{
-			id: 2,
+			id:     2,
 			key:    TokenString,
 			value:  []byte("\"2021-10-06 12:30:44\""),
 			indent: []byte("\t"),
 			offset: 11,
-			line: 1,
+			line:   1,
 			string: quote,
 		},
 		{
-			id: 3,
+			id:     3,
 			key:    condTokenKey,
 			value:  []byte("and"),
 			indent: []byte(" "),
-			line: 1,
+			line:   1,
 			offset: 33,
 		},
 		{
-			id: 4,
+			id:     4,
 			key:    TokenKeyword,
 			value:  []byte("bytes_in"),
 			indent: []byte(" \n"),
 			offset: 38,
-			line: 2,
+			line:   2,
 		},
 		{
-			id: 5,
+			id:     5,
 			key:    compareTokenKey,
 			value:  []byte("<="),
 			indent: []byte(" "),
 			offset: 47,
-			line: 2,
+			line:   2,
 		},
 		{
-			id: 6,
+			id:     6,
 			key:    TokenInteger,
 			value:  []byte("100"),
 			indent: []byte(" "),
 			offset: 50,
-			line: 2,
+			line:   2,
 		},
 		{
-			id: 7,
+			id:     7,
 			key:    condTokenKey,
 			value:  []byte("or"),
 			indent: []byte(" "),
 			offset: 54,
-			line: 2,
+			line:   2,
 		},
 		{
-			id: 8,
+			id:     8,
 			key:    TokenKeyword,
 			value:  []byte("user_agent"),
 			indent: []byte(" "),
 			offset: 57,
-			line: 2,
+			line:   2,
 		},
 		{
-			id: 9,
+			id:     9,
 			key:    compareTokenKey,
 			value:  []byte("="),
 			indent: nil,
 			offset: 67,
-			line: 2,
+			line:   2,
 		},
 		{
-			id: 10,
+			id:     10,
 			key:    TokenString,
 			value:  []byte("'curl'"),
 			indent: nil,
 			offset: 68,
 			string: quote2,
-			line: 2,
+			line:   2,
 		},
-	}, stream.GetSegment(10, 10), "parsed %s as %s", str, stream)
+	}, stream.GetSegment(10, 100), "parsed %s as \n%s", str, stream)
 }
 
 func TestTokenizeInject(t *testing.T) {
@@ -221,45 +221,45 @@ func TestTokenizeInject(t *testing.T) {
 
 	require.Equalf(t, []Token{
 		{
-			id: 0,
+			id:     0,
 			key:    TokenStringFragment,
 			value:  []byte("\"one "),
 			offset: 0,
 			string: quote,
-			line: 1,
+			line:   1,
 		},
 		{
-			id: 1,
+			id:     1,
 			key:    startQuoteVarToken,
 			value:  []byte("{{"),
 			offset: 5,
 			indent: nil,
-			line: 1,
+			line:   1,
 		},
 		{
-			id: 2,
+			id:     2,
 			key:    TokenKeyword,
 			value:  []byte("two"),
 			offset: 8,
 			indent: []byte(" "),
-			line: 1,
+			line:   1,
 		},
 		{
-			id: 3,
+			id:     3,
 			key:    endQuoteVarToken,
 			value:  []byte("}}"),
 			offset: 12,
 			indent: []byte(" "),
-			line: 1,
+			line:   1,
 		},
 		{
-			id: 4,
+			id:     4,
 			key:    TokenStringFragment,
 			value:  []byte(" three\""),
 			offset: 14,
 			indent: nil,
 			string: quote,
-			line: 1,
+			line:   1,
 		},
 	}, stream.GetSegment(10, 10), "parsed %s as %s", str, stream)
 }

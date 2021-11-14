@@ -49,8 +49,9 @@ func NewInfStream(p *parsing) *Stream {
 	}
 }
 
-func (s *Stream) SetHistorySize(size int) {
+func (s *Stream) SetHistorySize(size int) *Stream {
 	s.historySize = size
+	return s
 }
 
 // Close free all token objects to pool
@@ -68,8 +69,8 @@ func (s *Stream) Close() {
 }
 
 func (s *Stream) String() string {
-	items := make([]string, s.len)
-	ptr := s.current
+	items := make([]string, 0, s.len)
+	ptr := s.head
 	for ptr != nil {
 		items = append(items, strconv.Itoa(ptr.id)+": "+ptr.String())
 		ptr = ptr.next
@@ -190,7 +191,13 @@ func (s *Stream) GoNextIfNextIs(key int, otherKeys ...int) bool {
 // Slice generated from current token position and include tokens before and after current token.
 func (s *Stream) GetSegment(before, after int) []Token {
 	var segment []Token
-	if before > s.current.id-s.head.id {
+	if s.current == undefToken {
+		if s.prev != nil && before > s.prev.id-s.head.id {
+			before = s.prev.id - s.head.id
+		} else {
+			before = 0
+		}
+	} else if before > s.current.id-s.head.id {
 		before = s.current.id - s.head.id
 	}
 	if after > s.len-before-1 {

@@ -125,7 +125,7 @@ func TestInfStream(t *testing.T) {
 	tokenizer.AddToken(closeKey, []string{"}"})
 	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
 
-	stream := tokenizer.ParseStream(buffer, 100)
+	stream := tokenizer.ParseStream(buffer, 100).SetHistorySize(100)
 
 	n := 0
 	for stream.IsValid() {
@@ -146,8 +146,8 @@ func TestInfStream(t *testing.T) {
 		require.True(t, stream.CurrentToken().Is(commaKey))
 		stream.GoNext()
 
-		require.True(t, stream.CurrentToken().Is(TokenKeyword))
-		require.Equal(t, []byte("key"), stream.CurrentToken().Is(TokenKeyword))
+		require.Truef(t, stream.CurrentToken().Is(TokenKeyword), "iteration %d: %s", n, stream.GetSegmentAsString(10, 10, 10))
+		require.Equal(t, []byte("key"), stream.CurrentToken().Value())
 		stream.GoNext()
 
 		require.True(t, stream.CurrentToken().Is(colonKey))
@@ -159,12 +159,13 @@ func TestInfStream(t *testing.T) {
 
 		require.True(t, stream.CurrentToken().Is(closeKey))
 
+		stream.GoNext()
 		n++
 		if n >= 100 {
 			break
 		}
 
-		require.Equal(t, 100, n)
 	}
+	require.Equal(t, 100, n)
 
 }

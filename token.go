@@ -116,6 +116,8 @@ func (t *Token) Key() int {
 
 // Value returns value of current token as slice of bytes from source.
 // If current token is invalid value returns nil.
+//
+// Do not change bytes in the slice. Copy slice before change.
 func (t *Token) Value() []byte {
 	return t.value
 }
