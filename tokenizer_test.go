@@ -13,8 +13,8 @@ func TestTokenize(t *testing.T) {
 	tokenizer := New()
 	condTokenKey := 10
 	wordTokenKey := 11
-	tokenizer.AddToken(condTokenKey, []string{">=", "<=", "==", ">", "<"})
-	tokenizer.AddToken(wordTokenKey, []string{"or", "или"})
+	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
+	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})
 	quote := tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
 	data := []item{
 		{"one", Token{key: TokenKeyword}},
@@ -88,14 +88,14 @@ func TestTokenizeEdgeCases(t *testing.T) {
 
 	for _, v := range data1 {
 		stream := tokenizer.ParseString(v.str)
-		require.Equalf(t, v.tokens, stream.GetSegment(10, 10), "parse data1 %s: %s", v.str, stream)
+		require.Equalf(t, v.tokens, stream.GetSnippet(10, 10), "parse data1 %s: %s", v.str, stream)
 	}
 
 	tokenizer.AllowNumbersInKeyword().AllowKeywordUnderscore()
 
 	for _, v := range data2 {
 		stream := tokenizer.ParseBytes([]byte(v.str))
-		require.Equalf(t, v.tokens, stream.GetSegment(10, 10), "parse data2 %s: %s", v.str, stream)
+		require.Equalf(t, v.tokens, stream.GetSnippet(10, 10), "parse data2 %s: %s", v.str, stream)
 	}
 }
 
@@ -104,8 +104,8 @@ func TestTokenizeComplex(t *testing.T) {
 	compareTokenKey := 10
 	condTokenKey := 11
 	tokenizer.AllowKeywordUnderscore()
-	tokenizer.AddToken(compareTokenKey, []string{">=", "<=", "==", ">", "<", "="})
-	tokenizer.AddToken(condTokenKey, []string{"and", "or"})
+	tokenizer.DefineTokens(compareTokenKey, []string{">=", "<=", "==", ">", "<", "="})
+	tokenizer.DefineTokens(condTokenKey, []string{"and", "or"})
 	quote := tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
 	quote2 := tokenizer.AddString("'", "'").SetEscapeSymbol('\\')
 
@@ -202,15 +202,15 @@ func TestTokenizeComplex(t *testing.T) {
 			string: quote2,
 			line:   2,
 		},
-	}, stream.GetSegment(10, 100), "parsed %s as \n%s", str, stream)
+	}, stream.GetSnippet(10, 100), "parsed %s as \n%s", str, stream)
 }
 
 func TestTokenizeInject(t *testing.T) {
 	tokenizer := New()
 	startQuoteVarToken := 10
 	endQuoteVarToken := 11
-	tokenizer.AddToken(startQuoteVarToken, []string{"{{"})
-	tokenizer.AddToken(endQuoteVarToken, []string{"}}"})
+	tokenizer.DefineTokens(startQuoteVarToken, []string{"{{"})
+	tokenizer.DefineTokens(endQuoteVarToken, []string{"}}"})
 
 	quote := tokenizer.AddString(`"`, `"`).
 		SetEscapeSymbol('\\').
@@ -261,5 +261,5 @@ func TestTokenizeInject(t *testing.T) {
 			string: quote,
 			line:   1,
 		},
-	}, stream.GetSegment(10, 10), "parsed %s as %s", str, stream)
+	}, stream.GetSnippet(10, 10), "parsed %s as %s", str, stream)
 }

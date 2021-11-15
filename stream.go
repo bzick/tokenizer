@@ -58,7 +58,7 @@ func (s *Stream) SetHistorySize(size int) *Stream {
 func (s *Stream) Close() {
 	for ptr := s.head; ptr != nil; {
 		p := ptr.next
-		s.t.putToken(ptr)
+		s.t.freeToken(ptr)
 		ptr = p
 	}
 	s.next = nil
@@ -84,8 +84,8 @@ func (s *Stream) GetParsedLength() int {
 	return s.parsed
 }
 
-// GoNext moves stream pointer to next token
-func (s *Stream) GoNext() *Stream {
+// Next moves stream pointer to next token
+func (s *Stream) Next() *Stream {
 	if s.current.next != nil {
 		s.current = s.current.next
 		if s.current.next == nil && s.p != nil { // lazy load and parse next data-chunk
@@ -96,7 +96,7 @@ func (s *Stream) GoNext() *Stream {
 		if s.historySize != 0 && s.current.id-s.head.id > s.historySize {
 			t := s.head
 			s.head = s.head.unlink()
-			s.t.putToken(t)
+			s.t.freeToken(t)
 			s.len--
 		}
 	} else if s.current == undefToken {
@@ -109,8 +109,8 @@ func (s *Stream) GoNext() *Stream {
 	return s
 }
 
-// GoPrev move pointer of stream to the next token.
-func (s *Stream) GoPrev() *Stream {
+// Prev move pointer of stream to the next token.
+func (s *Stream) Prev() *Stream {
 	if s.current.prev != nil {
 		s.current = s.current.prev
 	} else if s.current == undefToken {
@@ -127,11 +127,11 @@ func (s *Stream) GoPrev() *Stream {
 func (s *Stream) GoTo(n int) *Stream {
 	if n > s.current.id {
 		for n != s.current.id && s.current != nil {
-			s.GoNext()
+			s.Next()
 		}
 	} else if n < s.current.id {
 		for s.current != nil && n != s.current.id {
-			s.GoPrev()
+			s.Prev()
 		}
 	}
 	return s
@@ -143,6 +143,8 @@ func (s *Stream) IsValid() bool {
 	return s.current != undefToken
 }
 
+// HeadToken returns pointer to head-token
+// Head-token may be changed if history size set.
 func (s *Stream) HeadToken() *Token {
 	return s.head
 }
@@ -180,16 +182,16 @@ func (s *Stream) NextToken() *Token {
 // If keys matched pointer will be updated and method returned true. Otherwise, returned false.
 func (s *Stream) GoNextIfNextIs(key int, otherKeys ...int) bool {
 	if s.NextToken().Is(key, otherKeys...) {
-		s.GoNext()
+		s.Next()
 		return true
 	} else {
 		return false
 	}
 }
 
-// GetSegment returns slice of tokens.
+// GetSnippet returns slice of tokens.
 // Slice generated from current token position and include tokens before and after current token.
-func (s *Stream) GetSegment(before, after int) []Token {
+func (s *Stream) GetSnippet(before, after int) []Token {
 	var segment []Token
 	if s.current == undefToken {
 		if s.prev != nil && before > s.prev.id-s.head.id {
@@ -243,10 +245,10 @@ func (s *Stream) GetSegment(before, after int) []Token {
 	return segment
 }
 
-// GetSegmentAsString returns tokens before and after current token as string.
+// GetSnippetAsString returns tokens before and after current token as string.
 // maxStringLength set maximum length of string representation of token.
-func (s *Stream) GetSegmentAsString(before, after, maxStringLength int) string {
-	segments := s.GetSegment(before, after)
+func (s *Stream) GetSnippetAsString(before, after, maxStringLength int) string {
+	segments := s.GetSnippet(before, after)
 	str := make([]string, len(segments))
 	for i, token := range segments {
 		str[i] = token.ValueAsString(maxStringLength)

@@ -16,7 +16,7 @@ type Token struct {
 	line   int
 	offset int
 	indent []byte
-	string *QuoteSettings
+	string *StringSettings
 
 	prev *Token
 	next *Token
@@ -143,7 +143,7 @@ func (t *Token) Line() int {
 	return t.line
 }
 
-// Offset returns the position of the token in the data source of bytes from start.
+// Offset returns the position of the token in the source strings (from start).
 func (t *Token) Offset() int {
 	return t.offset
 }
@@ -154,11 +154,14 @@ func (t Token) IsString() bool {
 	return t.key == TokenString || t.key == TokenStringFragment
 }
 
-// ValueUnescapedString returns 'unquoted' string without edge-quotes, escape symbols
+// ValueUnescaped returns 'unquoted' string without edge-quotes, escape symbols
 // but with conversion of escaped characters.
-// For example quoted string {"one \"two\"\t three"} transforms to {one "two"		three}
-func (t *Token) ValueUnescapedString() string {
-	if t.key == TokenString && t.string != nil {
+// For example quoted string
+//		"one \"two\"\t three"
+// transforms to
+//		one "two"		three
+func (t *Token) ValueUnescaped() []byte {
+	if t.string != nil {
 		from := 0
 		to := len(t.value)
 		if bytesStarts(t.string.StartToken, t.value) {
@@ -184,12 +187,21 @@ func (t *Token) ValueUnescapedString() string {
 			}
 		}
 		if start == 0 { // no one escapes
-			return b2s(str)
+			return str
 		} else {
-			return b2s(result)
+			return result
 		}
 	}
-	return ""
+	return nil
+}
+
+// ValueUnescapedString like as ValueUnescaped but returns string.
+func (t *Token) ValueUnescapedString() string {
+	if s := t.ValueUnescaped(); s != nil {
+		return b2s(s)
+	} else {
+		return ""
+	}
 }
 
 // Is checks if the token has any of these keys.

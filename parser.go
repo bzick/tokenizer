@@ -21,7 +21,7 @@ type parsing struct {
 	head      *Token
 	ptr       *Token
 	tail      []byte
-	stopKeys  []*TokenSettings
+	stopKeys  []*tokenRef
 	n         int
 	chunkSize int
 	offset    int
@@ -29,7 +29,7 @@ type parsing struct {
 }
 
 func newParser(t *Tokenizer, str []byte) *parsing {
-	tok := t.getToken()
+	tok := t.allocToken()
 	tok.line = 1
 	return &parsing{
 		t:     t,
@@ -44,7 +44,7 @@ func newInfParser(t *Tokenizer, reader io.Reader, bufferSize uint) *parsing {
 		bufferSize = DefaultChunkSize
 	}
 	buffer := make([]byte, bufferSize)
-	tok := t.getToken()
+	tok := t.allocToken()
 	tok.line = 1
 	return &parsing{
 		t:         t,
@@ -350,6 +350,7 @@ func (p *parsing) parseNumber() bool {
 	return true
 }
 
+// match compare next bytes from data with `r`
 func (p *parsing) match(r []byte, seek bool) bool {
 	if r[0] == p.curr {
 		if len(r) > 1 {
@@ -380,7 +381,7 @@ func (p *parsing) match(r []byte, seek bool) bool {
 
 // parseQuote parses quoted string.
 func (p *parsing) parseQuote() bool {
-	var quote *QuoteSettings
+	var quote *StringSettings
 	var start = p.pos
 	for _, q := range p.t.quotes {
 		if p.match(q.StartToken, true) {
@@ -405,7 +406,7 @@ func (p *parsing) parseQuote() bool {
 		} else if quote.Injects != nil {
 			loop := true
 			for _, inject := range quote.Injects {
-				for _, token := range p.t.tokensMap[inject.StartKey] {
+				for _, token := range p.t.tokens[inject.StartKey] {
 					if p.match(token.Token, true) {
 						p.token.key = TokenStringFragment
 						p.token.value = p.str[start : p.pos-len(token.Token)]
@@ -415,7 +416,7 @@ func (p *parsing) parseQuote() bool {
 						p.token.offset = p.offset + p.pos - len(token.Token)
 						p.emmitToken()
 						stopKeys := p.stopKeys // may be recursive quotes
-						p.stopKeys = p.t.tokensMap[inject.EndKey]
+						p.stopKeys = p.t.tokens[inject.EndKey]
 						p.parse()
 						p.stopKeys = stopKeys
 						p.token.key = TokenStringFragment
@@ -441,18 +442,20 @@ func (p *parsing) parseQuote() bool {
 	return true
 }
 
-// parseToken search any rune sequence from TokenSettings.
+// parseToken search any rune sequence from tokenItem.
 func (p *parsing) parseToken() bool {
 	if p.curr != 0 {
-		start := p.pos
-		for _, t := range p.t.tokens {
-			// todo find longer token, build index for tokens
-			if p.match(t.Token, true) {
-				p.token.key = t.Key
-				p.token.offset = p.offset + start
-				p.token.value = t.Token
-				p.emmitToken()
-				return true
+		toks := p.t.index[p.curr]
+		if toks != nil {
+			start := p.pos
+			for _, t := range toks {
+				if p.match(t.Token, true) {
+					p.token.key = t.Key
+					p.token.offset = p.offset + start
+					p.token.value = t.Token
+					p.emmitToken()
+					return true
+				}
 			}
 		}
 	}
@@ -468,7 +471,7 @@ func (p *parsing) emmitToken() {
 		p.ptr = p.ptr.addNext(p.token)
 	}
 	p.n++
-	p.token = p.t.getToken()
+	p.token = p.t.allocToken()
 	p.token.id = p.n
 	p.token.line = p.line
 }

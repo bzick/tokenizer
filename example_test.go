@@ -27,12 +27,12 @@ func NewJsonParser() *JsonParser {
 	parser := &JsonParser{}
 	parser.tokenizer = New()
 	parser.tokenizer.
-		AddToken(TokenCurlyOpen, []string{"{"}).
-		AddToken(TokenCurlyClose, []string{"}"}).
-		AddToken(TokenSquareOpen, []string{"["}).
-		AddToken(TokenSquareClose, []string{"]"}).
-		AddToken(TokenColon, []string{":"}).
-		AddToken(TokenComma, []string{","}).
+		DefineTokens(TokenCurlyOpen, []string{"{"}).
+		DefineTokens(TokenCurlyClose, []string{"}"}).
+		DefineTokens(TokenSquareOpen, []string{"["}).
+		DefineTokens(TokenSquareClose, []string{"]"}).
+		DefineTokens(TokenColon, []string{":"}).
+		DefineTokens(TokenComma, []string{","}).
 		AddString(`"`, `"`).
 		SetEscapeSymbol('\\').
 		SetSpecialSymbols(DefaultStringEscapes)
@@ -46,18 +46,18 @@ func (parser *JsonParser) Parse(json []byte) (interface{}, error) {
 
 func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
 	if stream.CurrentToken().Is(TokenCurlyOpen) { // analyze objects like {"one": 2, "three": [4, 5]}
-		stream.GoNext()
+		stream.Next()
 		object := map[string]interface{}{}
 		for {
 			if stream.CurrentToken().Is(TokenString) { // checks if token is quoted string, then it is object's key
 				var key = stream.CurrentToken().ValueUnescapedString()
 				var err error
-				if stream.GoNext().CurrentToken().Is(TokenColon) { // analyze key's value
-					if object[key], err = parser.analyzer(stream.GoNext()); err != nil {
+				if stream.Next().CurrentToken().Is(TokenColon) { // analyze key's value
+					if object[key], err = parser.analyzer(stream.Next()); err != nil {
 						return nil, err
 					}
 					if stream.CurrentToken().Is(TokenComma) {
-						stream.GoNext()
+						stream.Next()
 						if stream.CurrentToken().Is(TokenCurlyClose) {
 							return nil, parser.error(stream)
 						}
@@ -68,18 +68,18 @@ func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
 					return nil, parser.error(stream)
 				}
 			} else if stream.CurrentToken().Is(TokenCurlyClose) { // checks if token '}', then close the object
-				stream.GoNext()
+				stream.Next()
 				return object, nil
 			} else {
 				return nil, parser.error(stream)
 			}
 		}
 	} else if stream.CurrentToken().Is(TokenSquareOpen) { // analyze arrays like [1, "two", {"three": "four"}]
-		stream.GoNext()
+		stream.Next()
 		array := []interface{}{}
 		for {
 			if stream.CurrentToken().Is(TokenSquareClose) { // checks if token ']', then close the array
-				stream.GoNext()
+				stream.Next()
 				return array, nil
 			} else {
 				if item, err := parser.analyzer(stream); err != nil { // analyze array's item
@@ -88,7 +88,7 @@ func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
 					array = append(array, item)
 				}
 				if stream.CurrentToken().Is(TokenComma) {
-					stream.GoNext()
+					stream.Next()
 					if stream.CurrentToken().Is(TokenSquareClose) {
 						return nil, parser.error(stream)
 					}
@@ -98,13 +98,13 @@ func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
 			}
 		}
 	} else if stream.CurrentToken().Is(TokenInteger) { // analyze numbers
-		defer stream.GoNext()
+		defer stream.Next()
 		return stream.CurrentToken().ValueInt(), nil
 	} else if stream.CurrentToken().Is(TokenFloat) { // analyze floats
-		defer stream.GoNext()
+		defer stream.Next()
 		return stream.CurrentToken().ValueFloat(), nil
 	} else if stream.CurrentToken().Is(TokenString) { // analyze strings
-		defer stream.GoNext()
+		defer stream.Next()
 		return stream.CurrentToken().ValueUnescapedString(), nil
 	} else {
 		return nil, parser.error(stream)
@@ -114,10 +114,10 @@ func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
 func (parser *JsonParser) error(stream *Stream) error {
 	if stream.IsValid() {
 		return fmt.Errorf("unexpected token %s on line %d near: %s <-- there",
-			stream.CurrentToken().value, stream.CurrentToken().line, stream.GetSegmentAsString(5, 0, 0))
+			stream.CurrentToken().value, stream.CurrentToken().line, stream.GetSnippetAsString(5, 0, 0))
 	} else {
 		return fmt.Errorf("unexpected end on line %d near: %s <-- there",
-			stream.CurrentToken().line, stream.GetSegmentAsString(5, 0, 0))
+			stream.CurrentToken().line, stream.GetSnippetAsString(5, 0, 0))
 	}
 }
 
@@ -131,35 +131,4 @@ func TestJsonParser(t *testing.T) {
 		"two":  "three",
 		"four": []interface{}{int64(5), "six", 7.8, map[string]interface{}{}},
 	}, data)
-}
-
-func BenchmarkSandbox(b *testing.B) {
-	a := make([]int, 1000)
-	max := 0
-	for i := 0; i < b.N; i++ {
-		t := make([]int, 1000)
-		for j := 0; j < 1000; j++ {
-			t[j] = j
-		}
-		a = append(a, t...)
-		a = a[1000:]
-		if max < cap(a) {
-			max = cap(a)
-		}
-	}
-	b.Logf("%d) length %d, capacity %d (max %d)", b.N, len(a), cap(a), max)
-}
-
-func _TestSandbox(t *testing.T) {
-	a := make([]int, 100)
-	for i, _ := range a {
-		a[i] = i
-	}
-
-	b := a[10:12]
-	a = a[50:]
-	a = append(a, 1002, 1003, 1004)
-
-	t.Logf("a: length %d, capacity %d: %v", len(a), cap(a), a)
-	t.Logf("b: length %d, capacity %d: %v", len(b), cap(b), b)
 }

@@ -2,6 +2,7 @@ package tokenizer
 
 import (
 	"io"
+	"sort"
 	"sync"
 )
 
@@ -37,7 +38,11 @@ const (
 	fAllowNumberInKeyword   = 0b1000
 )
 
+const BackSlash = '\\'
+
 var defaultWhiteSpaces = []byte{' ', '\t', '\n', '\r'}
+
+// DefaultStringEscapes is default escaped symbols. Those symbols are often used everywhere.
 var DefaultStringEscapes = map[string]byte{
 	"n":  '\n',
 	"r":  '\r',
@@ -45,8 +50,15 @@ var DefaultStringEscapes = map[string]byte{
 	"\\": '\\',
 }
 
-// TokenSettings describes one token.
-type TokenSettings struct {
+type tokensGroup struct {
+	// Token type. Unique.
+	key int
+	// array of all tokens.
+	tokens [][]byte
+}
+
+// tokenItem describes one token.
+type tokenRef struct {
 	// Token type. Not unique.
 	Key int
 	// Token value as is. Should be unique.
@@ -61,8 +73,8 @@ type QuoteInjectSettings struct {
 	EndKey int
 }
 
-// QuoteSettings describes quoted string tokens.
-type QuoteSettings struct {
+// StringSettings describes framed(quoted) string tokens like quoted strings.
+type StringSettings struct {
 	StartToken   []byte
 	EndToken     []byte
 	EscapeSymbol byte
@@ -70,18 +82,24 @@ type QuoteSettings struct {
 	Injects      []QuoteInjectSettings
 }
 
-// AddInjection configure injection in segment
-func (q *QuoteSettings) AddInjection(startTokenKey, endTokenKey int) *QuoteSettings {
+// AddInjection configure injection in to string.
+// Injection - parsable fragment of framed(quoted) string.
+// Often used for parsing of placeholders or template's expressions in the framed string.
+func (q *StringSettings) AddInjection(startTokenKey, endTokenKey int) *StringSettings {
 	q.Injects = append(q.Injects, QuoteInjectSettings{StartKey: startTokenKey, EndKey: endTokenKey})
 	return q
 }
 
-func (q *QuoteSettings) SetEscapeSymbol(symbol byte) *QuoteSettings {
+// SetEscapeSymbol set escape symbol for framed(quoted) string.
+// Escape symbol allows ignoring close token of framed string.
+// Also escape symbol allows using special symbols in the frame strings, like \n, \t.
+func (q *StringSettings) SetEscapeSymbol(symbol byte) *StringSettings {
 	q.EscapeSymbol = symbol
 	return q
 }
 
-func (q *QuoteSettings) SetSpecialSymbols(special map[string]byte) *QuoteSettings {
+// SetSpecialSymbols set mapping of all escapable symbols for escape symbol, like \n, \t, \r.
+func (q *StringSettings) SetSpecialSymbols(special map[string]byte) *StringSettings {
 	q.SpecSymbols = special
 	return q
 }
@@ -89,12 +107,11 @@ func (q *QuoteSettings) SetSpecialSymbols(special map[string]byte) *QuoteSetting
 type Tokenizer struct {
 	// bit flags
 	flags uint16
-	// all defined custom tokens
-	tokens []TokenSettings
-	//
-	tokensMap map[int][]*TokenSettings
-	quotes    []*QuoteSettings
-	wSpaces   []byte
+	// all defined custom tokens {key: [token1, token2, ...], ...}
+	tokens  map[int][]*tokenRef
+	index   map[byte][]*tokenRef
+	quotes  []*StringSettings
+	wSpaces []byte
 
 	pool sync.Pool
 }
@@ -102,11 +119,11 @@ type Tokenizer struct {
 // New creates new tokenizer.
 func New() *Tokenizer {
 	t := Tokenizer{
-		flags:     0,
-		tokens:    []TokenSettings{},
-		tokensMap: map[int][]*TokenSettings{},
-		quotes:    []*QuoteSettings{},
-		wSpaces:   defaultWhiteSpaces,
+		flags:   0,
+		tokens:  map[int][]*tokenRef{},
+		index:   map[byte][]*tokenRef{},
+		quotes:  []*StringSettings{},
+		wSpaces: defaultWhiteSpaces,
 	}
 	t.pool.New = func() interface{} {
 		return new(Token)
@@ -114,7 +131,7 @@ func New() *Tokenizer {
 	return &t
 }
 
-// SetWhiteSpaces sets custom whitespace symbols
+// SetWhiteSpaces sets custom whitespace symbols between tokens.
 // By default: {' ', '\t', '\n', '\r'}
 func (t *Tokenizer) SetWhiteSpaces(ws []byte) *Tokenizer {
 	t.wSpaces = ws
@@ -127,7 +144,7 @@ func (t *Tokenizer) StopOnUndefinedToken() *Tokenizer {
 	return t
 }
 
-// AllowKeywordUnderscore allows underscore in keywords, like `one_two` or `_three`
+// AllowKeywordUnderscore allows underscore symbol in keywords, like `one_two` or `_three`
 func (t *Tokenizer) AllowKeywordUnderscore() *Tokenizer {
 	t.flags |= fAllowKeywordUnderscore
 	return t
@@ -141,19 +158,28 @@ func (t *Tokenizer) AllowNumbersInKeyword() *Tokenizer {
 	return t
 }
 
-// AddToken add custom token.
-// There key is identifier of tokens, tokens slice is string representation of tokens.
-func (t *Tokenizer) AddToken(key int, tokens []string) *Tokenizer {
-	if t.tokensMap[key] == nil {
-		t.tokensMap[key] = []*TokenSettings{}
-	}
+// DefineTokens add custom token.
+// There `key` unique is identifier of `tokens`, `tokens` — slice of string of tokens.
+// If key already exists tokens will be rewritten.
+func (t *Tokenizer) DefineTokens(key int, tokens []string) *Tokenizer {
+	var tks []*tokenRef
 	for _, token := range tokens {
-		t.tokens = append(t.tokens, TokenSettings{
+		ref := tokenRef{
 			Key:   key,
 			Token: s2b(token),
+		}
+		head := ref.Token[0]
+		tks = append(tks, &ref)
+		if t.index[head] == nil {
+			t.index[head] = []*tokenRef{}
+		}
+		t.index[head] = append(t.index[head], &ref)
+		sort.Slice(t.index[head], func(i, j int) bool {
+			return len(t.index[head][i].Token) > len(t.index[head][j].Token)
 		})
-		t.tokensMap[key] = append(t.tokensMap[key], &t.tokens[len(t.tokens)-1])
 	}
+	t.tokens[key] = tks
+
 	return t
 }
 
@@ -162,10 +188,10 @@ func (t *Tokenizer) AddToken(key int, tokens []string) *Tokenizer {
 // Arguments startToken and endToken defines open and close "quotes".
 //  - t.AddString("`", "`") - parse string "one `two three`" will be parsed as
 // 			[{key: TokenKeyword, value: "one"}, {key: TokenString, value: "`two three`"}]
-//  - t.AddString("//", "\n") - parse string "parse // like comment" will be parsed as
+//  - t.AddString("//", "\n") - parse string "parse // like comment\n" will be parsed as
 //			[{key: TokenKeyword, value: "parse"}, {key: TokenString, value: "// like comment"}]
-func (t *Tokenizer) AddString(startToken, endToken string) *QuoteSettings {
-	q := &QuoteSettings{
+func (t *Tokenizer) AddString(startToken, endToken string) *StringSettings {
+	q := &StringSettings{
 		StartToken: s2b(startToken),
 		EndToken:   s2b(endToken),
 	}
@@ -177,11 +203,11 @@ func (t *Tokenizer) AddString(startToken, endToken string) *QuoteSettings {
 	return q
 }
 
-func (t *Tokenizer) getToken() *Token {
+func (t *Tokenizer) allocToken() *Token {
 	return t.pool.Get().(*Token)
 }
 
-func (t *Tokenizer) putToken(token *Token) {
+func (t *Tokenizer) freeToken(token *Token) {
 	token.next = nil
 	token.prev = nil
 	token.value = nil
@@ -210,6 +236,7 @@ type ParseSettings struct {
 	BufferSize int
 }
 
+// ParseStream parse the string into tokens.
 func (t *Tokenizer) ParseStream(r io.Reader, bufferSize uint) *Stream {
 	p := newInfParser(t, r, bufferSize)
 	p.preload()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 func TestStream(t *testing.T) {
@@ -14,10 +15,10 @@ func TestStream(t *testing.T) {
 	openKey := 12
 	closeKey := 13
 	tokenizer.AllowKeywordUnderscore()
-	tokenizer.AddToken(condTokenKey, []string{">=", "<=", "==", ">", "<"})
-	tokenizer.AddToken(wordTokenKey, []string{"or", "или"})
-	tokenizer.AddToken(openKey, []string{"{{"})
-	tokenizer.AddToken(closeKey, []string{"}}"})
+	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
+	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})
+	tokenizer.DefineTokens(openKey, []string{"{{"})
+	tokenizer.DefineTokens(closeKey, []string{"}}"})
 	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\').AddInjection(openKey, closeKey)
 
 	str := `field_a > 10 "value1" 12.3 "value2 {{ value3 }} value4"`
@@ -33,7 +34,7 @@ func TestStream(t *testing.T) {
 	require.Equal(t, condTokenKey, stream.NextToken().Key())
 	require.Equal(t, []byte(">"), stream.NextToken().Value())
 
-	stream.GoNext()
+	stream.Next()
 
 	require.True(t, stream.IsValid())
 	require.True(t, stream.CurrentToken().IsValid())
@@ -52,7 +53,7 @@ func TestStream(t *testing.T) {
 	require.Equal(t, float64(10.0), stream.CurrentToken().ValueFloat())
 	require.Equal(t, "", stream.CurrentToken().ValueUnescapedString())
 
-	stream.GoNext()
+	stream.Next()
 
 	require.Equal(t, TokenString, stream.CurrentToken().Key())
 	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
@@ -71,8 +72,8 @@ func TestHistory(t *testing.T) {
 	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
 	require.Equal(t, 10, tokens.len)
 
-	tokens.GoNext()
-	tokens.GoNext()
+	tokens.Next()
+	tokens.Next()
 
 	require.Equal(t, 2, tokens.CurrentToken().Id())
 	require.Equal(t, int64(2), tokens.CurrentToken().ValueInt())
@@ -80,8 +81,8 @@ func TestHistory(t *testing.T) {
 	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
 	require.Equal(t, 10, tokens.len)
 
-	tokens.GoNext()
-	tokens.GoNext()
+	tokens.Next()
+	tokens.Next()
 
 	require.Equal(t, 4, tokens.CurrentToken().Id())
 	require.Equal(t, int64(4), tokens.CurrentToken().ValueInt())
@@ -89,9 +90,9 @@ func TestHistory(t *testing.T) {
 	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
 	require.Equal(t, 9, tokens.len)
 
-	tokens.GoPrev()
-	tokens.GoPrev()
-	tokens.GoPrev()
+	tokens.Prev()
+	tokens.Prev()
+	tokens.Prev()
 
 	require.Equal(t, 1, tokens.CurrentToken().Id())
 	require.Equal(t, int64(1), tokens.CurrentToken().ValueInt())
@@ -99,7 +100,7 @@ func TestHistory(t *testing.T) {
 	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
 	require.Equal(t, 9, tokens.len)
 
-	tokens.GoPrev()
+	tokens.Prev()
 
 	require.Equal(t, -1, tokens.CurrentToken().Id())
 	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt())
@@ -119,10 +120,10 @@ func TestInfStream(t *testing.T) {
 	colonKey := 11
 	openKey := 12
 	closeKey := 13
-	tokenizer.AddToken(commaKey, []string{","})
-	tokenizer.AddToken(colonKey, []string{":"})
-	tokenizer.AddToken(openKey, []string{"{"})
-	tokenizer.AddToken(closeKey, []string{"}"})
+	tokenizer.DefineTokens(commaKey, []string{","})
+	tokenizer.DefineTokens(colonKey, []string{":"})
+	tokenizer.DefineTokens(openKey, []string{"{"})
+	tokenizer.DefineTokens(closeKey, []string{"}"})
 	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
 
 	stream := tokenizer.ParseStream(buffer, 100).SetHistorySize(100)
@@ -130,36 +131,36 @@ func TestInfStream(t *testing.T) {
 	n := 0
 	for stream.IsValid() {
 		require.True(t, stream.CurrentToken().Is(openKey))
-		stream.GoNext()
+		stream.Next()
 
 		require.True(t, stream.CurrentToken().Is(TokenKeyword))
 		require.Equal(t, []byte("id"), stream.CurrentToken().Value())
-		stream.GoNext()
+		stream.Next()
 
 		require.True(t, stream.CurrentToken().Is(colonKey))
-		stream.GoNext()
+		stream.Next()
 
 		require.True(t, stream.CurrentToken().Is(TokenInteger))
 		id := stream.CurrentToken().ValueInt()
-		stream.GoNext()
+		stream.Next()
 
 		require.True(t, stream.CurrentToken().Is(commaKey))
-		stream.GoNext()
+		stream.Next()
 
-		require.Truef(t, stream.CurrentToken().Is(TokenKeyword), "iteration %d: %s", n, stream.GetSegmentAsString(10, 10, 10))
+		require.Truef(t, stream.CurrentToken().Is(TokenKeyword), "iteration %d: %s", n, stream.GetSnippetAsString(10, 10, 10))
 		require.Equal(t, []byte("key"), stream.CurrentToken().Value())
-		stream.GoNext()
+		stream.Next()
 
 		require.True(t, stream.CurrentToken().Is(colonKey))
-		stream.GoNext()
+		stream.Next()
 
 		require.True(t, stream.CurrentToken().Is(TokenString))
 		require.Equal(t, fmt.Sprintf("object number %d", id), stream.CurrentToken().ValueUnescapedString())
-		stream.GoNext()
+		stream.Next()
 
 		require.True(t, stream.CurrentToken().Is(closeKey))
 
-		stream.GoNext()
+		stream.Next()
 		n++
 		if n >= 100 {
 			break
@@ -168,4 +169,84 @@ func TestInfStream(t *testing.T) {
 	}
 	require.Equal(t, 100, n)
 
+}
+
+var pattern = []byte(`<item count=10 valid id="n9762"> Носки <![CDATA[ socks ]]></item>`)
+
+type dataGenerator struct {
+	size int
+	i    int
+	data []byte
+}
+
+func newDataGenerator(size int) *dataGenerator {
+	var data = make([]byte, len(pattern)*size)
+	for j := 0; j < size; j++ {
+		copy(data[len(pattern)*j:], pattern)
+	}
+	return &dataGenerator{
+		data: data,
+	}
+}
+
+func (d *dataGenerator) Read(p []byte) (n int, err error) {
+	from := d.i
+	to := d.i + len(p)
+	if to > len(d.data) {
+		to = len(d.data)
+	}
+	copy(p, d.data[from:to])
+	d.i = to
+	return to - from, nil
+}
+
+func BenchmarkParseInfStream(b *testing.B) {
+	reader := newDataGenerator(b.N)
+	tokenizer := New()
+	tagOpen := 1
+	tagClose := 2
+	equal := 3
+	slash := 4
+	tokenizer.DefineTokens(tagOpen, []string{"<"})
+	tokenizer.DefineTokens(tagClose, []string{">"})
+	tokenizer.DefineTokens(equal, []string{"="})
+	tokenizer.DefineTokens(slash, []string{"/"})
+	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
+	tokenizer.AddString(`<![CDATA[`, `]]>`)
+
+	b.ResetTimer()
+	t := time.Now()
+	stream := tokenizer.ParseStream(reader, 4096).SetHistorySize(10)
+
+	for stream.IsValid() {
+		stream.Next()
+	}
+
+	dif := time.Now().Sub(t)
+	b.Logf("Speed: %d bytes at %s: %d byte/sec", len(reader.data), dif, int(float64(len(reader.data))/dif.Seconds()))
+}
+
+func BenchmarkParseBytes(b *testing.B) {
+	reader := newDataGenerator(b.N)
+	tokenizer := New()
+	tagOpen := 1
+	tagClose := 2
+	equal := 3
+	slash := 4
+	tokenizer.DefineTokens(tagOpen, []string{"<"})
+	tokenizer.DefineTokens(tagClose, []string{">"})
+	tokenizer.DefineTokens(equal, []string{"="})
+	tokenizer.DefineTokens(slash, []string{"/"})
+	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
+	tokenizer.AddString(`<![CDATA[`, `]]>`)
+
+	b.ResetTimer()
+
+	t := time.Now()
+	stream := tokenizer.ParseBytes(reader.data).SetHistorySize(10)
+	stream.IsValid()
+
+	dif := time.Now().Sub(t)
+	size := len(pattern) * b.N
+	b.Logf("Speed: %d bytes string with %s: %d byte/sec", size, dif, int(float64(size)/dif.Seconds()))
 }
