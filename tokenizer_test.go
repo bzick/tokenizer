@@ -13,9 +13,10 @@ func TestTokenize(t *testing.T) {
 	tokenizer := New()
 	condTokenKey := 10
 	wordTokenKey := 11
+	dquoteKey := 14
 	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
 	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})
-	quote := tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
+	quote := tokenizer.DefineStringToken(dquoteKey, `"`, `"`).SetEscapeSymbol('\\')
 	data := []item{
 		{"one", Token{key: TokenKeyword}},
 		{"два", Token{key: TokenKeyword}},
@@ -103,11 +104,12 @@ func TestTokenizeComplex(t *testing.T) {
 	tokenizer := New()
 	compareTokenKey := 10
 	condTokenKey := 11
+	quoteTokenKey := 14
 	tokenizer.AllowKeywordUnderscore()
 	tokenizer.DefineTokens(compareTokenKey, []string{">=", "<=", "==", ">", "<", "="})
 	tokenizer.DefineTokens(condTokenKey, []string{"and", "or"})
-	quote := tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
-	quote2 := tokenizer.AddString("'", "'").SetEscapeSymbol('\\')
+	quote := tokenizer.DefineStringToken(quoteTokenKey, `"`, `"`).SetEscapeSymbol('\\')
+	quote2 := tokenizer.DefineStringToken(quoteTokenKey, "'", "'").SetEscapeSymbol('\\')
 
 	str := "modified >\t\"2021-10-06 12:30:44\" and \nbytes_in <= 100 or user_agent='curl'"
 	stream := tokenizer.ParseString(str)
@@ -209,10 +211,11 @@ func TestTokenizeInject(t *testing.T) {
 	tokenizer := New()
 	startQuoteVarToken := 10
 	endQuoteVarToken := 11
+	quoteTokenKey := 14
 	tokenizer.DefineTokens(startQuoteVarToken, []string{"{{"})
 	tokenizer.DefineTokens(endQuoteVarToken, []string{"}}"})
 
-	quote := tokenizer.AddString(`"`, `"`).
+	quote := tokenizer.DefineStringToken(quoteTokenKey, `"`, `"`).
 		SetEscapeSymbol('\\').
 		AddInjection(startQuoteVarToken, endQuoteVarToken)
 

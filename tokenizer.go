@@ -41,13 +41,19 @@ const (
 const BackSlash = '\\'
 
 var defaultWhiteSpaces = []byte{' ', '\t', '\n', '\r'}
+var defaultWhiteSpacesMap = map[byte]struct{}{
+	' ':  {},
+	'\t': {},
+	'\n': {},
+	'\r': {},
+}
 
 // DefaultStringEscapes is default escaped symbols. Those symbols are often used everywhere.
-var DefaultStringEscapes = map[string]byte{
-	"n":  '\n',
-	"r":  '\r',
-	"t":  '\t',
-	"\\": '\\',
+var DefaultStringEscapes = map[byte]byte{
+	'n':  '\n',
+	'r':  '\r',
+	't':  '\t',
+	'\\': '\\',
 }
 
 type tokensGroup struct {
@@ -75,10 +81,11 @@ type QuoteInjectSettings struct {
 
 // StringSettings describes framed(quoted) string tokens like quoted strings.
 type StringSettings struct {
+	Key          int
 	StartToken   []byte
 	EndToken     []byte
 	EscapeSymbol byte
-	SpecSymbols  map[string]byte
+	SpecSymbols  map[byte]byte
 	Injects      []QuoteInjectSettings
 }
 
@@ -99,7 +106,7 @@ func (q *StringSettings) SetEscapeSymbol(symbol byte) *StringSettings {
 }
 
 // SetSpecialSymbols set mapping of all escapable symbols for escape symbol, like \n, \t, \r.
-func (q *StringSettings) SetSpecialSymbols(special map[string]byte) *StringSettings {
+func (q *StringSettings) SetSpecialSymbols(special map[byte]byte) *StringSettings {
 	q.SpecSymbols = special
 	return q
 }
@@ -112,6 +119,7 @@ type Tokenizer struct {
 	index   map[byte][]*tokenRef
 	quotes  []*StringSettings
 	wSpaces []byte
+	wsMap   map[byte]struct{}
 
 	pool sync.Pool
 }
@@ -124,6 +132,7 @@ func New() *Tokenizer {
 		index:   map[byte][]*tokenRef{},
 		quotes:  []*StringSettings{},
 		wSpaces: defaultWhiteSpaces,
+		wsMap:   defaultWhiteSpacesMap,
 	}
 	t.pool.New = func() interface{} {
 		return new(Token)
@@ -183,15 +192,16 @@ func (t *Tokenizer) DefineTokens(key int, tokens []string) *Tokenizer {
 	return t
 }
 
-// AddString defines a token string.
+// DefineStringToken defines a token string.
 // For example, a piece of data surrounded by quotes: "string in quotes" or 'string on sigle quotes'.
 // Arguments startToken and endToken defines open and close "quotes".
-//  - t.AddString("`", "`") - parse string "one `two three`" will be parsed as
+//  - t.DefineStringToken("`", "`") - parse string "one `two three`" will be parsed as
 // 			[{key: TokenKeyword, value: "one"}, {key: TokenString, value: "`two three`"}]
-//  - t.AddString("//", "\n") - parse string "parse // like comment\n" will be parsed as
+//  - t.DefineStringToken("//", "\n") - parse string "parse // like comment\n" will be parsed as
 //			[{key: TokenKeyword, value: "parse"}, {key: TokenString, value: "// like comment"}]
-func (t *Tokenizer) AddString(startToken, endToken string) *StringSettings {
+func (t *Tokenizer) DefineStringToken(key int, startToken, endToken string) *StringSettings {
 	q := &StringSettings{
+		Key:        key,
 		StartToken: s2b(startToken),
 		EndToken:   s2b(endToken),
 	}

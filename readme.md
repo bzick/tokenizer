@@ -28,7 +28,7 @@ Use cases:
 Example:
 
 ```go
-
+// define custom tokens keys
 const ( 
 	TEquality = 1
 	TDot      = 2
@@ -40,15 +40,18 @@ parser := tokenizer.New()
 parser.DefineTokens(TEquality, []string{"<", "<=", "==", ">=", ">", "!="})
 parser.DefineTokens(TDot, []string{"."})
 parser.DefineTokens(TMath, []string{"+", "-", "/", "*", "%"})
-parser.AddString(`"`, `"`).SetEscapeSymbol(tokenizer.BackSlash)
+parser.DefineStringToken(`"`, `"`).SetEscapeSymbol(tokenizer.BackSlash)
 
 // parse data
 stream := parser.ParseString(`user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34`)
+defer stream.Close()
+
 for stream.Valid() {
-	if stream.Is(tokenizer.TokenKeyword) {
+	if stream.CurrentToken().Is(tokenizer.TokenKeyword) {
+		field := stream.CurrentToken().ValueString()
 		// ... 
 	}
-	stream.GoNext()
+	stream.Next()
 }
 ```
 
@@ -82,7 +85,7 @@ More examples:
 - `tokenizer.TokenInteger` — integer value
 - `tokenizer.TokenFloat` — float/double value
 - `tokenizer.TokenString` — quoted string
-- `tokenizer.TokenStringFragment` — fragment quoted string. Quoted string may be split by placeholders. 
+- `tokenizer.TokenStringFragment` — fragment framed (quoted) string 
 
 ### Unknown token — `tokenizer.TokenUnknown`
 
@@ -191,60 +194,70 @@ tokenizer.ParseString(`1.3e-8`):
 }
 ```
 
-To get float64 from the token value use `stream.GetFloat()`:
+To get float64 from the token value use `token.GetFloat()`:
 
 ```go
 stream := tokenizer.ParseString("1.3e2")
-fmt.Print("Token is %d", stream.GetFloat())  // Token is 1300
+fmt.Print("Token is %d", stream.CurrentToken().GetFloat())  // Token is 130
 ```
 
-### Frame (quoted) string
+### Framed string
 
-Что бы строка считалось quoted нужно через метод `tokenizer.AddQuote()` указать открывающий токен и закрывающий токен.
+Strings that are framed with tokens are called framed strings. An obvious example is quoted a string like `" one two "`.
+Where quotes are edge tokens.
+
+You can create and customize framed string through `tokenizer.AddQuote()`:
 
 ```go
-tokenizer.AddQuote(`"`, `"`)
-stream := tokenizer.ParseString(`one "two three"`)
+const TokenDoubleQuotedString = 10
+tokenizer.DefineStringToken(TokenDoubleQuotedString, `"`, `"`).SetEscapeSymbol('\\')
+stream := tokenizer.ParseString(`"two \"three"`)
 ```
 ```
 {
     {
-        Key: tokenizer.TokenKeyword
-        Value: "one"
-    },
-    {
-        Key: tokenizer.TokenQuotedString
-        Value: "\"two three\""
+        Key: tokenizer.TokenString
+        Value: "\"two \\"three\""
     },
 }
 ```
 
-To get a string without special characters, use the `stream.ValueUnescape()` method.
+To get a framed string without edge tokens and special characters, use the `stream.ValueUnescape()` method:
 
-### Quoted строки с подстановкой
+```go
+v := stream.CurrentToken().ValueUnescape() // result: two "three
+```
 
-В quoted строках можно использовать подстановки выражений, которые можно разобрать в токены. Например `"one {{ two }} three"`.
-Части quoted строк до, между и после подстановок будут помещаться в токены типа `tokenizer.TokenQuotedStringFragment` 
+The method `token.StringKey()` will be return token string key defined in the `DefineStringToken`:
+
+```go
+stream.CurrentToken().StringKey() == TokenDoubleQuotedString // true
+```
+
+### Injection in framed string
+
+Strings can contain expression substitutions that can be parsed into tokens. For example `"one {{two}} three"`.
+Fragments of strings before, between and after substitutions will be stored in tokens as `tokenizer.TokenStringFragment`. 
 
 ```go
 const (
     TokenOpenInjection = 1
     TokenCloseInjection = 2
+    TokenQuotedString = 3
 )
 
 parser := tokenizer.New()
-parser.AddToken(TokenOpenInjection, []string{"{{"})
-parser.AddToken(TokenCloseInjection, []string{"}}"})
-parser.AddQuote(`"`, `"`).AddInjection(TokenOpenInjection, TokenCloseInjection)
+parser.DefineTokens(TokenOpenInjection, []string{"{{"})
+parser.DefineTokens(TokenCloseInjection, []string{"}}"})
+parser.DefineStringToken(TokenQuotedString, `"`, `"`).AddInjection(TokenOpenInjection, TokenCloseInjection)
 
 parser.ParseString(`"one {{ two }} three"`)
 ```
-
-Результат будет
+Tokens:
 ```
 {
     {
-        Key: tokenizer.TokenQuotedStringFragment,
+        Key: tokenizer.TokenStringFragment,
         Value: "one"
     },
     {
@@ -257,22 +270,71 @@ parser.ParseString(`"one {{ two }} three"`)
     },
     {
         Key: TokenCloseInjection,
-        Value: "{{"
+        Value: "}}"
     },
     {
-        Key: tokenizer.TokenQuotedStringFragment,
+        Key: tokenizer.TokenStringFragment,
         Value: "three"
     },
 }
 ```
 
+Use cases:
+- parse templates
+- parse placeholders
+
 ## User defined tokens
 
-## Parsing
+The new token can be defined via the `DefineTokens` method:
 
-### Parse string
+```go
 
-### Parse buffer
+const (
+    TokenCurlyOpen    = 1
+    TokenCurlyClose   = 2
+    TokenSquareOpen   = 3
+    TokenSquareClose  = 4
+    TokenColon        = 5
+    TokenComma        = 6
+	TokenDoubleQuoted = 7
+)
+
+// json parser
+parser := tokenizer.New()
+parser.
+		DefineTokens(TokenCurlyOpen, []string{"{"}).
+		DefineTokens(TokenCurlyClose, []string{"}"}).
+		DefineTokens(TokenSquareOpen, []string{"["}).
+		DefineTokens(TokenSquareClose, []string{"]"}).
+		DefineTokens(TokenColon, []string{":"}).
+		DefineTokens(TokenComma, []string{","}).
+        DefineStringToken(TokenDoubleQuoted, `"`, `"`).SetSpecialSymbols(tokenizer.DefaultStringEscapes)
+
+stream := parser.ParseString(`{"key": [1]}`)
+```
+
+## Parsing string
+
+There is two ways to parse string/slice
+
+- `parser.ParseString(str)`
+- `parser.ParseBytes(slice)`
+
+## Parse buffer
+
+The package allows to parse an endless stream of data into tokens.
+For parsing, you need to pass `io.Reader`, from which data will be read (chunk-by-chunk):
+
+```go
+fp, err := os.Open("data.json") // huge JSON file
+// check fs, configure tokenizer ...
+
+stream := parser.ParseStream(fp, 4096).SetHistorySize(10)
+for stream.IsValid() {
+	// ...
+	stream.Next()
+}
+```
 
 ## Known issues
 

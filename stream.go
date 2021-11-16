@@ -246,12 +246,18 @@ func (s *Stream) GetSnippet(before, after int) []Token {
 }
 
 // GetSnippetAsString returns tokens before and after current token as string.
-// maxStringLength set maximum length of string representation of token.
+// `maxStringLength` specify max length of each token string. Zero — unlimited token string length.
+// If string greater than maxLength method removes some runes in the middle of the string.
 func (s *Stream) GetSnippetAsString(before, after, maxStringLength int) string {
 	segments := s.GetSnippet(before, after)
 	str := make([]string, len(segments))
 	for i, token := range segments {
-		str[i] = token.ValueAsString(maxStringLength)
+		v := token.ValueString()
+		if maxStringLength > 4 && len(v) > maxStringLength {
+			str[i] = v[:maxStringLength/2] + "..." + v[maxStringLength/2+1:]
+		} else {
+			str[i] = v
+		}
 	}
 
 	return strings.Join(str, "")

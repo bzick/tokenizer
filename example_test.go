@@ -7,12 +7,13 @@ import (
 )
 
 const (
-	TokenCurlyOpen   = 1
-	TokenCurlyClose  = 2
-	TokenSquareOpen  = 3
-	TokenSquareClose = 4
-	TokenColon       = 5
-	TokenComma       = 6
+	TokenCurlyOpen    = 1
+	TokenCurlyClose   = 2
+	TokenSquareOpen   = 3
+	TokenSquareClose  = 4
+	TokenColon        = 5
+	TokenComma        = 6
+	TokenDoubleQuoted = 7
 )
 
 // Example of JSON parser via tokenizer.
@@ -33,9 +34,8 @@ func NewJsonParser() *JsonParser {
 		DefineTokens(TokenSquareClose, []string{"]"}).
 		DefineTokens(TokenColon, []string{":"}).
 		DefineTokens(TokenComma, []string{","}).
-		AddString(`"`, `"`).
-		SetEscapeSymbol('\\').
-		SetSpecialSymbols(DefaultStringEscapes)
+		DefineStringToken(TokenDoubleQuoted, `"`, `"`).
+		SetEscapeSymbol('\\').SetSpecialSymbols(DefaultStringEscapes)
 
 	return parser
 }

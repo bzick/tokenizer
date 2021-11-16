@@ -14,12 +14,13 @@ func TestStream(t *testing.T) {
 	wordTokenKey := 11
 	openKey := 12
 	closeKey := 13
+	dquoteKey := 14
 	tokenizer.AllowKeywordUnderscore()
 	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
 	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})
 	tokenizer.DefineTokens(openKey, []string{"{{"})
 	tokenizer.DefineTokens(closeKey, []string{"}}"})
-	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\').AddInjection(openKey, closeKey)
+	tokenizer.DefineStringToken(dquoteKey, `"`, `"`).SetEscapeSymbol('\\').AddInjection(openKey, closeKey)
 
 	str := `field_a > 10 "value1" 12.3 "value2 {{ value3 }} value4"`
 	stream := tokenizer.ParseString(str)
@@ -28,7 +29,7 @@ func TestStream(t *testing.T) {
 	require.Equal(t, TokenKeyword, stream.CurrentToken().Key())
 	require.Equal(t, []byte("field_a"), stream.CurrentToken().Value())
 	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
-	require.Equal(t, "", stream.CurrentToken().ValueUnescapedString())
+	require.Equal(t, "field_a", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, []byte(nil), stream.CurrentToken().Indent())
 
 	require.Equal(t, condTokenKey, stream.NextToken().Key())
@@ -42,7 +43,7 @@ func TestStream(t *testing.T) {
 	require.Equal(t, []byte(">"), stream.CurrentToken().Value())
 	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
 	require.Equal(t, float64(0.0), stream.CurrentToken().ValueFloat())
-	require.Equal(t, "", stream.CurrentToken().ValueUnescapedString())
+	require.Equal(t, ">", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, []byte(" "), stream.CurrentToken().Indent())
 
 	require.False(t, stream.GoNextIfNextIs(TokenKeyword))
@@ -51,7 +52,7 @@ func TestStream(t *testing.T) {
 	require.Equal(t, TokenInteger, stream.CurrentToken().Key())
 	require.Equal(t, int64(10), stream.CurrentToken().ValueInt())
 	require.Equal(t, float64(10.0), stream.CurrentToken().ValueFloat())
-	require.Equal(t, "", stream.CurrentToken().ValueUnescapedString())
+	require.Equal(t, "10", stream.CurrentToken().ValueUnescapedString())
 
 	stream.Next()
 
@@ -120,11 +121,12 @@ func TestInfStream(t *testing.T) {
 	colonKey := 11
 	openKey := 12
 	closeKey := 13
+	dquoteKey := 14
 	tokenizer.DefineTokens(commaKey, []string{","})
 	tokenizer.DefineTokens(colonKey, []string{":"})
 	tokenizer.DefineTokens(openKey, []string{"{"})
 	tokenizer.DefineTokens(closeKey, []string{"}"})
-	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
+	tokenizer.DefineStringToken(dquoteKey, `"`, `"`).SetEscapeSymbol('\\')
 
 	stream := tokenizer.ParseStream(buffer, 100).SetHistorySize(100)
 
@@ -207,12 +209,14 @@ func BenchmarkParseInfStream(b *testing.B) {
 	tagClose := 2
 	equal := 3
 	slash := 4
+	dquote := 5
+	cdata := 6
 	tokenizer.DefineTokens(tagOpen, []string{"<"})
 	tokenizer.DefineTokens(tagClose, []string{">"})
 	tokenizer.DefineTokens(equal, []string{"="})
 	tokenizer.DefineTokens(slash, []string{"/"})
-	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
-	tokenizer.AddString(`<![CDATA[`, `]]>`)
+	tokenizer.DefineStringToken(dquote, `"`, `"`).SetEscapeSymbol('\\')
+	tokenizer.DefineStringToken(cdata, `<![CDATA[`, `]]>`)
 
 	b.ResetTimer()
 	t := time.Now()
@@ -233,20 +237,22 @@ func BenchmarkParseBytes(b *testing.B) {
 	tagClose := 2
 	equal := 3
 	slash := 4
+	dquote := 5
+	cdata := 6
 	tokenizer.DefineTokens(tagOpen, []string{"<"})
 	tokenizer.DefineTokens(tagClose, []string{">"})
 	tokenizer.DefineTokens(equal, []string{"="})
 	tokenizer.DefineTokens(slash, []string{"/"})
-	tokenizer.AddString(`"`, `"`).SetEscapeSymbol('\\')
-	tokenizer.AddString(`<![CDATA[`, `]]>`)
+	tokenizer.DefineStringToken(dquote, `"`, `"`).SetEscapeSymbol('\\')
+	tokenizer.DefineStringToken(cdata, `<![CDATA[`, `]]>`)
 
 	b.ResetTimer()
 
 	t := time.Now()
-	stream := tokenizer.ParseBytes(reader.data).SetHistorySize(10)
+	stream := tokenizer.ParseBytes(reader.data)
 	stream.IsValid()
 
 	dif := time.Now().Sub(t)
-	size := len(pattern) * b.N
+	size := len(reader.data)
 	b.Logf("Speed: %d bytes string with %s: %d byte/sec", size, dif, int(float64(size)/dif.Seconds()))
 }

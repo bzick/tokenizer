@@ -222,6 +222,13 @@ func (p *parsing) parse() {
 func (p *parsing) parseWhitespace() bool {
 	var start = -1
 	for p.curr != 0 {
+		//if _, ok := p.t.wsMap[p.curr]; ok {
+		//	if start == -1 {
+		//		start = p.pos
+		//	}
+		//} else {
+		//	break
+		//}
 		var matched = false
 		for _, ws := range p.t.wSpaces {
 			if p.curr == ws {
@@ -468,7 +475,8 @@ func (p *parsing) emmitToken() {
 		p.ptr = p.token
 		p.head = p.ptr
 	} else {
-		p.ptr = p.ptr.addNext(p.token)
+		p.ptr.addNext(p.token)
+		p.ptr = p.token
 	}
 	p.n++
 	p.token = p.t.allocToken()

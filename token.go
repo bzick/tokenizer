@@ -22,11 +22,10 @@ type Token struct {
 	next *Token
 }
 
-// addNext add new token as next node of dl-list and return these token.
-func (t *Token) addNext(next *Token) *Token {
+// addNext add new token as next node of dl-list.
+func (t *Token) addNext(next *Token) {
 	next.prev = t
 	t.next = next
-	return next
 }
 
 // unlink remove token from dl-list and fix links of prev and next nodes.
@@ -122,30 +121,40 @@ func (t *Token) Value() []byte {
 	return t.value
 }
 
-// ValueAsString returns value of the token as string.
-// Optional maxLength specify max length of result string.
-// If string greater than maxLength method removes some runes in the middle of the string.
+// ValueString returns value of the token as string.
 // If the token is TokenUndef method returns empty string.
-func (t *Token) ValueAsString(maxLength int) string {
+func (t *Token) ValueString() string {
 	if t.value == nil {
 		return ""
-	} else if maxLength > 0 && (t.key == TokenString || t.key == TokenStringFragment) {
-		// todo truncate the string
-		return b2s(t.value)
 	} else {
 		return b2s(t.value)
 	}
 }
 
-// Line returns number of line of token in the source text.
+// Line returns line number in input string.
 // Line numbers starts from 1.
 func (t *Token) Line() int {
 	return t.line
 }
 
-// Offset returns the position of the token in the source strings (from start).
+// Offset returns the byte position in input string (from start).
 func (t *Token) Offset() int {
 	return t.offset
+}
+
+// StringSettings returns StringSettings structure if token is framed string.
+func (t *Token) StringSettings() *StringSettings {
+	return t.string
+}
+
+// StringKey returns key of string.
+// If key not defined for string TokenString will be returned.
+func (t *Token) StringKey() int {
+	if t.string != nil {
+		return t.string.Key
+	} else {
+		return TokenString
+	}
 }
 
 // IsString checks if current token is a quoted string.
@@ -154,8 +163,10 @@ func (t Token) IsString() bool {
 	return t.key == TokenString || t.key == TokenStringFragment
 }
 
-// ValueUnescaped returns 'unquoted' string without edge-quotes, escape symbols
-// but with conversion of escaped characters.
+// ValueUnescaped returns clear (unquoted) string
+//  - without edge-tokens (quotes)
+//  - with character escaping handling
+//
 // For example quoted string
 //		"one \"two\"\t three"
 // transforms to
@@ -176,7 +187,7 @@ func (t *Token) ValueUnescaped() []byte {
 		start := 0
 		for i := 0; i < len(str); i++ {
 			if escaping {
-				if v, ok := t.string.SpecSymbols[string(str[i])]; ok {
+				if v, ok := t.string.SpecSymbols[str[i]]; ok {
 					result = append(result, t.value[start:i]...)
 					result = append(result, v)
 				}
@@ -191,8 +202,9 @@ func (t *Token) ValueUnescaped() []byte {
 		} else {
 			return result
 		}
+	} else {
+		return t.value
 	}
-	return nil
 }
 
 // ValueUnescapedString like as ValueUnescaped but returns string.
