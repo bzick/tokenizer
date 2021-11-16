@@ -67,27 +67,27 @@ func TestHistory(t *testing.T) {
 	tokens := tokenizer.ParseString("0 1 2 3 4 5 6 7 8 9")
 	tokens.SetHistorySize(3)
 
-	require.Equal(t, 0, tokens.CurrentToken().Id())
+	require.Equal(t, 0, tokens.CurrentToken().ID())
 	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt())
-	require.Equal(t, 0, tokens.HeadToken().Id())
+	require.Equal(t, 0, tokens.HeadToken().ID())
 	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
 	require.Equal(t, 10, tokens.len)
 
 	tokens.Next()
 	tokens.Next()
 
-	require.Equal(t, 2, tokens.CurrentToken().Id())
+	require.Equal(t, 2, tokens.CurrentToken().ID())
 	require.Equal(t, int64(2), tokens.CurrentToken().ValueInt())
-	require.Equal(t, 0, tokens.HeadToken().Id())
+	require.Equal(t, 0, tokens.HeadToken().ID())
 	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
 	require.Equal(t, 10, tokens.len)
 
 	tokens.Next()
 	tokens.Next()
 
-	require.Equal(t, 4, tokens.CurrentToken().Id())
+	require.Equal(t, 4, tokens.CurrentToken().ID())
 	require.Equal(t, int64(4), tokens.CurrentToken().ValueInt())
-	require.Equal(t, 1, tokens.HeadToken().Id())
+	require.Equal(t, 1, tokens.HeadToken().ID())
 	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
 	require.Equal(t, 9, tokens.len)
 
@@ -95,17 +95,17 @@ func TestHistory(t *testing.T) {
 	tokens.Prev()
 	tokens.Prev()
 
-	require.Equal(t, 1, tokens.CurrentToken().Id())
+	require.Equal(t, 1, tokens.CurrentToken().ID())
 	require.Equal(t, int64(1), tokens.CurrentToken().ValueInt())
-	require.Equal(t, 1, tokens.HeadToken().Id())
+	require.Equal(t, 1, tokens.HeadToken().ID())
 	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
 	require.Equal(t, 9, tokens.len)
 
 	tokens.Prev()
 
-	require.Equal(t, -1, tokens.CurrentToken().Id())
+	require.Equal(t, -1, tokens.CurrentToken().ID())
 	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt())
-	require.Equal(t, 1, tokens.HeadToken().Id())
+	require.Equal(t, 1, tokens.HeadToken().ID())
 	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
 	require.Equal(t, 9, tokens.len)
 }

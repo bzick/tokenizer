@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+// Stream iterator via parsed tokens.
+// If data reads from an infinite buffer then the iterator will be read data from reader chunk-by-chunk.
 type Stream struct {
 	t *Tokenizer
 	// count of tokens in the stream
@@ -39,6 +41,7 @@ func NewStream(p *parsing) *Stream {
 	}
 }
 
+// NewInfStream creates new stream with active parser.
 func NewInfStream(p *parsing) *Stream {
 	return &Stream{
 		t:       p.t,
@@ -49,6 +52,7 @@ func NewInfStream(p *parsing) *Stream {
 	}
 }
 
+// SetHistorySize sets the number of tokens that should remain after the current token
 func (s *Stream) SetHistorySize(size int) *Stream {
 	s.historySize = size
 	return s
@@ -162,9 +166,8 @@ func (s *Stream) CurrentToken() *Token {
 func (s *Stream) PrevToken() *Token {
 	if s.current.prev != nil {
 		return s.current.prev
-	} else {
-		return undefToken
 	}
+	return undefToken
 }
 
 // NextToken returns next token from the stream.
@@ -173,9 +176,8 @@ func (s *Stream) PrevToken() *Token {
 func (s *Stream) NextToken() *Token {
 	if s.current.next != nil {
 		return s.current.next
-	} else {
-		return undefToken
 	}
+	return undefToken
 }
 
 // GoNextIfNextIs move stream pointer to the next token if the next token has specific token keys.
@@ -184,9 +186,8 @@ func (s *Stream) GoNextIfNextIs(key int, otherKeys ...int) bool {
 	if s.NextToken().Is(key, otherKeys...) {
 		s.Next()
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 // GetSnippet returns slice of tokens.

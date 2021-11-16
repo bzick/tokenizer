@@ -9,6 +9,7 @@ var undefToken = &Token{
 	id: -1,
 }
 
+// Token struct describe one token.
 type Token struct {
 	id     int
 	key    int
@@ -39,8 +40,8 @@ func (t *Token) unlink() *Token {
 	return next
 }
 
-// Id returns id of token. ID is the sequence number of tokens in the stream.
-func (t *Token) Id() int {
+// ID returns id of token. Id is the sequence number of tokens in the stream.
+func (t *Token) ID() int {
 	return t.id
 }
 
@@ -126,9 +127,8 @@ func (t *Token) Value() []byte {
 func (t *Token) ValueString() string {
 	if t.value == nil {
 		return ""
-	} else {
-		return b2s(t.value)
 	}
+	return b2s(t.value)
 }
 
 // Line returns line number in input string.
@@ -152,9 +152,8 @@ func (t *Token) StringSettings() *StringSettings {
 func (t *Token) StringKey() int {
 	if t.string != nil {
 		return t.string.Key
-	} else {
-		return TokenString
 	}
+	return TokenString
 }
 
 // IsString checks if current token is a quoted string.
@@ -199,21 +198,18 @@ func (t *Token) ValueUnescaped() []byte {
 		}
 		if start == 0 { // no one escapes
 			return str
-		} else {
-			return result
 		}
-	} else {
-		return t.value
+		return result
 	}
+	return t.value
 }
 
 // ValueUnescapedString like as ValueUnescaped but returns string.
 func (t *Token) ValueUnescapedString() string {
 	if s := t.ValueUnescaped(); s != nil {
 		return b2s(s)
-	} else {
-		return ""
 	}
+	return ""
 }
 
 // Is checks if the token has any of these keys.

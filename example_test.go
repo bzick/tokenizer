@@ -19,13 +19,13 @@ const (
 // Example of JSON parser via tokenizer.
 // Parse JSON to map.
 
-type JsonParser struct {
+type jsonParser struct {
 	tokenizer *Tokenizer
 }
 
 // NewJsonParser create and configure new tokenizer for JSON.
-func NewJsonParser() *JsonParser {
-	parser := &JsonParser{}
+func newJSONParser() *jsonParser {
+	parser := &jsonParser{}
 	parser.tokenizer = New()
 	parser.tokenizer.
 		DefineTokens(TokenCurlyOpen, []string{"{"}).
@@ -40,11 +40,11 @@ func NewJsonParser() *JsonParser {
 	return parser
 }
 
-func (parser *JsonParser) Parse(json []byte) (interface{}, error) {
+func (parser *jsonParser) Parse(json []byte) (interface{}, error) {
 	return parser.analyzer(parser.tokenizer.ParseBytes(json))
 }
 
-func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
+func (parser *jsonParser) analyzer(stream *Stream) (interface{}, error) {
 	if stream.CurrentToken().Is(TokenCurlyOpen) { // analyze objects like {"one": 2, "three": [4, 5]}
 		stream.Next()
 		object := map[string]interface{}{}
@@ -81,20 +81,19 @@ func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
 			if stream.CurrentToken().Is(TokenSquareClose) { // checks if token ']', then close the array
 				stream.Next()
 				return array, nil
+			}
+			if item, err := parser.analyzer(stream); err == nil { // analyze array's item
+				array = append(array, item)
 			} else {
-				if item, err := parser.analyzer(stream); err != nil { // analyze array's item
-					return nil, err
-				} else {
-					array = append(array, item)
-				}
-				if stream.CurrentToken().Is(TokenComma) {
-					stream.Next()
-					if stream.CurrentToken().Is(TokenSquareClose) {
-						return nil, parser.error(stream)
-					}
-				} else if !stream.CurrentToken().Is(TokenSquareClose) {
+				return nil, err
+			}
+			if stream.CurrentToken().Is(TokenComma) {
+				stream.Next()
+				if stream.CurrentToken().Is(TokenSquareClose) {
 					return nil, parser.error(stream)
 				}
+			} else if !stream.CurrentToken().Is(TokenSquareClose) {
+				return nil, parser.error(stream)
 			}
 		}
 	} else if stream.CurrentToken().Is(TokenInteger) { // analyze numbers
@@ -111,18 +110,17 @@ func (parser *JsonParser) analyzer(stream *Stream) (interface{}, error) {
 	}
 }
 
-func (parser *JsonParser) error(stream *Stream) error {
+func (parser *jsonParser) error(stream *Stream) error {
 	if stream.IsValid() {
 		return fmt.Errorf("unexpected token %s on line %d near: %s <-- there",
 			stream.CurrentToken().value, stream.CurrentToken().line, stream.GetSnippetAsString(5, 0, 0))
-	} else {
-		return fmt.Errorf("unexpected end on line %d near: %s <-- there",
-			stream.CurrentToken().line, stream.GetSnippetAsString(5, 0, 0))
 	}
+	return fmt.Errorf("unexpected end on line %d near: %s <-- there",
+		stream.CurrentToken().line, stream.GetSnippetAsString(5, 0, 0))
 }
 
 func TestJsonParser(t *testing.T) {
-	parser := NewJsonParser()
+	parser := newJSONParser()
 
 	data, err := parser.Parse([]byte(`{"one": 1, "two": "three", "four": [5, "six", 7.8, {}]}`))
 	require.NoError(t, err)

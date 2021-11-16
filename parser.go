@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 )
 
+// DefaultChunkSize default chunk size for reader.
 const DefaultChunkSize = 4096
 
 // parsing is main parser
@@ -69,15 +70,11 @@ func (p *parsing) ensureBytes(n int) bool {
 			p.loadChunk()
 			if p.pos+n < len(p.str) {
 				return true
-			} else {
-				return false
 			}
-		} else {
-			return false
 		}
-	} else {
-		return true
+		return false
 	}
+	return true
 }
 
 func (p *parsing) next() {
@@ -94,17 +91,15 @@ func (p *parsing) next() {
 func (p *parsing) nextByte() byte {
 	if p.ensureBytes(1) {
 		return p.str[p.pos+1]
-	} else {
-		return 0
 	}
+	return 0
 }
 
 func (p *parsing) slice(from, to int) []byte {
 	if to < len(p.str) {
 		return p.str[from:to]
-	} else {
-		return p.str[from:]
 	}
+	return p.str[from:]
 }
 
 func (p *parsing) preload() {
@@ -222,13 +217,6 @@ func (p *parsing) parse() {
 func (p *parsing) parseWhitespace() bool {
 	var start = -1
 	for p.curr != 0 {
-		//if _, ok := p.t.wsMap[p.curr]; ok {
-		//	if start == -1 {
-		//		start = p.pos
-		//	}
-		//} else {
-		//	break
-		//}
 		var matched = false
 		for _, ws := range p.t.wSpaces {
 			if p.curr == ws {
@@ -251,9 +239,8 @@ func (p *parsing) parseWhitespace() bool {
 		p.token.line = p.line
 		p.token.indent = p.str[start:p.pos]
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 func (p *parsing) parseKeyword() bool {
@@ -282,9 +269,8 @@ func (p *parsing) parseKeyword() bool {
 		p.token.offset = p.offset + start
 		p.emmitToken()
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 const (
@@ -373,15 +359,13 @@ func (p *parsing) match(r []byte, seek bool) bool {
 					p.next()
 				}
 				return true
-			} else {
-				return false
 			}
-		} else {
-			if seek {
-				p.next()
-			}
-			return true
+			return false
 		}
+		if seek {
+			p.next()
+		}
+		return true
 	}
 	return false
 }

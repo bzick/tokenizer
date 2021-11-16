@@ -38,15 +38,10 @@ const (
 	fAllowNumberInKeyword   = 0b1000
 )
 
+// BackSlash just backslash byte
 const BackSlash = '\\'
 
 var defaultWhiteSpaces = []byte{' ', '\t', '\n', '\r'}
-var defaultWhiteSpacesMap = map[byte]struct{}{
-	' ':  {},
-	'\t': {},
-	'\n': {},
-	'\r': {},
-}
 
 // DefaultStringEscapes is default escaped symbols. Those symbols are often used everywhere.
 var DefaultStringEscapes = map[byte]byte{
@@ -54,13 +49,6 @@ var DefaultStringEscapes = map[byte]byte{
 	'r':  '\r',
 	't':  '\t',
 	'\\': '\\',
-}
-
-type tokensGroup struct {
-	// Token type. Unique.
-	key int
-	// array of all tokens.
-	tokens [][]byte
 }
 
 // tokenItem describes one token.
@@ -111,6 +99,7 @@ func (q *StringSettings) SetSpecialSymbols(special map[byte]byte) *StringSetting
 	return q
 }
 
+// Tokenizer stores all tokens configuration and behaviors.
 type Tokenizer struct {
 	// bit flags
 	flags uint16
@@ -132,7 +121,6 @@ func New() *Tokenizer {
 		index:   map[byte][]*tokenRef{},
 		quotes:  []*StringSettings{},
 		wSpaces: defaultWhiteSpaces,
-		wsMap:   defaultWhiteSpacesMap,
 	}
 	t.pool.New = func() interface{} {
 		return new(Token)
@@ -240,10 +228,6 @@ func (t *Tokenizer) ParseBytes(str []byte) *Stream {
 	p := newParser(t, str)
 	p.parse()
 	return NewStream(p)
-}
-
-type ParseSettings struct {
-	BufferSize int
 }
 
 // ParseStream parse the string into tokens.
