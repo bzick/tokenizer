@@ -1,5 +1,4 @@
-Tokenizer
-=====
+# Tokenizer [![Build Status](https://github.com/bzick/easyjson/actions/workflows/easyjson.yml/badge.svg)](https://github.com/mailru/easyjson/actions/workflows/easyjson.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/mailru/easyjson)](https://goreportcard.com/report/github.com/mailru/easyjson)
 
 Tokenizer — parse any string, slice or infinite buffer to any tokens.
 
@@ -7,16 +6,16 @@ Main features:
 
 * High performance.
 * No regexp.
-* Provides simple API.
-* By default, support integer and float numbers.
-* Support quoted string or other "framed" strings.
-* Support token injection in quoted or "framed" strings.
-* Support unicode.
-* Customization of tokens.
+* Provides [simple API](https://pkg.go.dev/github.com/bzick/tokenizer).
+* By default, support [integer](#integer-number) and [float](#float-number) numbers.
+* Supports [quoted string or other "framed"](#framed-string) strings.
+* Supports [injection](#injection-in-framed-string) in quoted or "framed" strings.
+* Supports unicode.
+* [Customization of tokens](#user-defined-tokens).
 * Autodetect white space symbols.
-* Parse any data syntax (xml, json, yaml), any programming language.
+* Parse any data syntax (xml, [json](https://github.com/bzick/tokenizer/blob/master/example_test.go), yaml), any programming language.
 * Single pass through the data.
-* Parsing infinite data.
+* Parses [infinite incoming data](#parse-buffer) and don't panic.
 
 Use cases:
 - Parsing html, xml, json, yaml and other text formats.
@@ -24,8 +23,7 @@ Use cases:
 - Parsing string templates.
 - Parsing formulas.
 
-
-Example:
+For example parse formula `user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34`:
 
 ```go
 // define custom tokens keys
@@ -203,14 +201,15 @@ fmt.Print("Token is %d", stream.CurrentToken().GetFloat())  // Token is 130
 
 ### Framed string
 
-Strings that are framed with tokens are called framed strings. An obvious example is quoted a string like `" one two "`.
-Where quotes are edge tokens.
+Strings that are framed with tokens are called framed strings. An obvious example is quoted a string like `"one two"`.
+There quotes — edge tokens.
 
 You can create and customize framed string through `tokenizer.AddQuote()`:
 
 ```go
 const TokenDoubleQuotedString = 10
 tokenizer.DefineStringToken(TokenDoubleQuotedString, `"`, `"`).SetEscapeSymbol('\\')
+
 stream := tokenizer.ParseString(`"two \"three"`)
 ```
 ```
@@ -302,13 +301,13 @@ const (
 // json parser
 parser := tokenizer.New()
 parser.
-		DefineTokens(TokenCurlyOpen, []string{"{"}).
-		DefineTokens(TokenCurlyClose, []string{"}"}).
-		DefineTokens(TokenSquareOpen, []string{"["}).
-		DefineTokens(TokenSquareClose, []string{"]"}).
-		DefineTokens(TokenColon, []string{":"}).
-		DefineTokens(TokenComma, []string{","}).
-        DefineStringToken(TokenDoubleQuoted, `"`, `"`).SetSpecialSymbols(tokenizer.DefaultStringEscapes)
+	DefineTokens(TokenCurlyOpen, []string{"{"}).
+	DefineTokens(TokenCurlyClose, []string{"}"}).
+	DefineTokens(TokenSquareOpen, []string{"["}).
+	DefineTokens(TokenSquareClose, []string{"]"}).
+	DefineTokens(TokenColon, []string{":"}).
+	DefineTokens(TokenComma, []string{","}).
+	DefineStringToken(TokenDoubleQuoted, `"`, `"`).SetSpecialSymbols(tokenizer.DefaultStringEscapes)
 
 stream := parser.ParseString(`{"key": [1]}`)
 ```
