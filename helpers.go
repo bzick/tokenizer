@@ -6,13 +6,13 @@ import (
 	"unsafe"
 )
 
-// B2S converts byte slice to a string without memory allocation.
+// b2s converts byte slice to a string without memory allocation.
 // See https://groups.google.com/forum/#!msg/Golang-Nuts/ENgbUzYvCuU/90yGx7GUAgAJ .
 func b2s(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-// S2B converts string to a byte slice without memory allocation.
+// s2b converts string to a byte slice without memory allocation.
 //
 // Note it may break if string and/or slice header will change
 // in the future go versions.
