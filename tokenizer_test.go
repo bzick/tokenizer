@@ -11,9 +11,9 @@ func TestTokenize(t *testing.T) {
 		token Token
 	}
 	tokenizer := New()
-	condTokenKey := 10
-	wordTokenKey := 11
-	dquoteKey := 14
+	condTokenKey := TokenKey(10)
+	wordTokenKey := TokenKey(11)
+	dquoteKey := TokenKey(14)
 	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
 	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})
 	quote := tokenizer.DefineStringToken(dquoteKey, `"`, `"`).SetEscapeSymbol('\\')
@@ -102,9 +102,9 @@ func TestTokenizeEdgeCases(t *testing.T) {
 
 func TestTokenizeComplex(t *testing.T) {
 	tokenizer := New()
-	compareTokenKey := 10
-	condTokenKey := 11
-	quoteTokenKey := 14
+	compareTokenKey := TokenKey(10)
+	condTokenKey := TokenKey(11)
+	quoteTokenKey := TokenKey(14)
 	tokenizer.AllowKeywordUnderscore()
 	tokenizer.DefineTokens(compareTokenKey, []string{">=", "<=", "==", ">", "<", "="})
 	tokenizer.DefineTokens(condTokenKey, []string{"and", "or"})
@@ -209,9 +209,9 @@ func TestTokenizeComplex(t *testing.T) {
 
 func TestTokenizeInject(t *testing.T) {
 	tokenizer := New()
-	startQuoteVarToken := 10
-	endQuoteVarToken := 11
-	quoteTokenKey := 14
+	startQuoteVarToken := TokenKey(10)
+	endQuoteVarToken := TokenKey(11)
+	quoteTokenKey := TokenKey(14)
 	tokenizer.DefineTokens(startQuoteVarToken, []string{"{{"})
 	tokenizer.DefineTokens(endQuoteVarToken, []string{"}}"})
 

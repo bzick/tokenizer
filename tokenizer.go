@@ -8,27 +8,30 @@ import (
 
 const newLine = '\n'
 
+// TokenKey token type identifier
+type TokenKey int
+
 const (
 	// TokenUnknown means that this token not embedded token and not user defined.
-	TokenUnknown = -6
+	TokenUnknown TokenKey = -6
 	// TokenStringFragment means that this is only fragment of quoted string with injections
 	// For example, "one {{ two }} three", where "one " and " three" — TokenStringFragment
-	TokenStringFragment = -5
+	TokenStringFragment TokenKey = -5
 	// TokenString means than this token is quoted string.
 	// For example, "one two"
-	TokenString = -4
+	TokenString TokenKey = -4
 	// TokenFloat means that this token is float number with point and/or exponent.
 	// For example, 1.2, 1e6, 1E-6
-	TokenFloat = -3
+	TokenFloat TokenKey = -3
 	// TokenInteger means that this token is integer number.
 	// For example, 3, 49983
-	TokenInteger = -2
+	TokenInteger TokenKey = -2
 	// TokenKeyword means that this token is word.
 	// For example, one, two, три
-	TokenKeyword = -1
+	TokenKeyword TokenKey = -1
 	// TokenUndef means that token doesn't exist.
 	// Then stream out of range of token list any getter or checker will return TokenUndef token.
-	TokenUndef = 0
+	TokenUndef TokenKey = 0
 )
 
 const (
@@ -54,7 +57,7 @@ var DefaultStringEscapes = map[byte]byte{
 // tokenItem describes one token.
 type tokenRef struct {
 	// Token type. Not unique.
-	Key int
+	Key TokenKey
 	// Token value as is. Should be unique.
 	Token []byte
 }
@@ -62,14 +65,14 @@ type tokenRef struct {
 // QuoteInjectSettings describes open injection token and close injection token.
 type QuoteInjectSettings struct {
 	// Token type witch opens quoted string.
-	StartKey int
+	StartKey TokenKey
 	// Token type witch closes quoted string.
-	EndKey int
+	EndKey TokenKey
 }
 
 // StringSettings describes framed(quoted) string tokens like quoted strings.
 type StringSettings struct {
-	Key          int
+	Key          TokenKey
 	StartToken   []byte
 	EndToken     []byte
 	EscapeSymbol byte
@@ -80,7 +83,7 @@ type StringSettings struct {
 // AddInjection configure injection in to string.
 // Injection - parsable fragment of framed(quoted) string.
 // Often used for parsing of placeholders or template's expressions in the framed string.
-func (q *StringSettings) AddInjection(startTokenKey, endTokenKey int) *StringSettings {
+func (q *StringSettings) AddInjection(startTokenKey, endTokenKey TokenKey) *StringSettings {
 	q.Injects = append(q.Injects, QuoteInjectSettings{StartKey: startTokenKey, EndKey: endTokenKey})
 	return q
 }
@@ -104,7 +107,7 @@ type Tokenizer struct {
 	// bit flags
 	flags uint16
 	// all defined custom tokens {key: [token1, token2, ...], ...}
-	tokens  map[int][]*tokenRef
+	tokens  map[TokenKey][]*tokenRef
 	index   map[byte][]*tokenRef
 	quotes  []*StringSettings
 	wSpaces []byte
@@ -117,7 +120,7 @@ type Tokenizer struct {
 func New() *Tokenizer {
 	t := Tokenizer{
 		flags:   0,
-		tokens:  map[int][]*tokenRef{},
+		tokens:  map[TokenKey][]*tokenRef{},
 		index:   map[byte][]*tokenRef{},
 		quotes:  []*StringSettings{},
 		wSpaces: defaultWhiteSpaces,
@@ -158,8 +161,11 @@ func (t *Tokenizer) AllowNumbersInKeyword() *Tokenizer {
 // DefineTokens add custom token.
 // There `key` unique is identifier of `tokens`, `tokens` — slice of string of tokens.
 // If key already exists tokens will be rewritten.
-func (t *Tokenizer) DefineTokens(key int, tokens []string) *Tokenizer {
+func (t *Tokenizer) DefineTokens(key TokenKey, tokens []string) *Tokenizer {
 	var tks []*tokenRef
+	if key < 1 {
+		return t
+	}
 	for _, token := range tokens {
 		ref := tokenRef{
 			Key:   key,
@@ -187,7 +193,7 @@ func (t *Tokenizer) DefineTokens(key int, tokens []string) *Tokenizer {
 // 			[{key: TokenKeyword, value: "one"}, {key: TokenString, value: "`two three`"}]
 //  - t.DefineStringToken("//", "\n") - parse string "parse // like comment\n" will be parsed as
 //			[{key: TokenKeyword, value: "parse"}, {key: TokenString, value: "// like comment"}]
-func (t *Tokenizer) DefineStringToken(key int, startToken, endToken string) *StringSettings {
+func (t *Tokenizer) DefineStringToken(key TokenKey, startToken, endToken string) *StringSettings {
 	q := &StringSettings{
 		Key:        key,
 		StartToken: s2b(startToken),

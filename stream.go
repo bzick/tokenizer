@@ -88,8 +88,8 @@ func (s *Stream) GetParsedLength() int {
 	return s.parsed
 }
 
-// Next moves stream pointer to next token
-func (s *Stream) Next() *Stream {
+// GoNext moves stream pointer to next token
+func (s *Stream) GoNext() *Stream {
 	if s.current.next != nil {
 		s.current = s.current.next
 		if s.current.next == nil && s.p != nil { // lazy load and parse next data-chunk
@@ -113,8 +113,8 @@ func (s *Stream) Next() *Stream {
 	return s
 }
 
-// Prev move pointer of stream to the next token.
-func (s *Stream) Prev() *Stream {
+// GoPrev move pointer of stream to the next token.
+func (s *Stream) GoPrev() *Stream {
 	if s.current.prev != nil {
 		s.current = s.current.prev
 	} else if s.current == undefToken {
@@ -131,11 +131,11 @@ func (s *Stream) Prev() *Stream {
 func (s *Stream) GoTo(n int) *Stream {
 	if n > s.current.id {
 		for n != s.current.id && s.current != nil {
-			s.Next()
+			s.GoNext()
 		}
 	} else if n < s.current.id {
 		for s.current != nil && n != s.current.id {
-			s.Prev()
+			s.GoPrev()
 		}
 	}
 	return s
@@ -182,9 +182,9 @@ func (s *Stream) NextToken() *Token {
 
 // GoNextIfNextIs move stream pointer to the next token if the next token has specific token keys.
 // If keys matched pointer will be updated and method returned true. Otherwise, returned false.
-func (s *Stream) GoNextIfNextIs(key int, otherKeys ...int) bool {
+func (s *Stream) GoNextIfNextIs(key TokenKey, otherKeys ...TokenKey) bool {
 	if s.NextToken().Is(key, otherKeys...) {
-		s.Next()
+		s.GoNext()
 		return true
 	}
 	return false

@@ -12,7 +12,7 @@ var undefToken = &Token{
 // Token struct describe one token.
 type Token struct {
 	id     int
-	key    int
+	key    TokenKey
 	value  []byte
 	line   int
 	offset int
@@ -110,7 +110,7 @@ func (t *Token) Indent() []byte {
 
 // Key returns the key of the token pointed to by the pointer.
 // If pointer is not valid (see IsValid) TokenUndef will be returned.
-func (t *Token) Key() int {
+func (t *Token) Key() TokenKey {
 	return t.key
 }
 
@@ -149,7 +149,7 @@ func (t *Token) StringSettings() *StringSettings {
 
 // StringKey returns key of string.
 // If key not defined for string TokenString will be returned.
-func (t *Token) StringKey() int {
+func (t *Token) StringKey() TokenKey {
 	if t.string != nil {
 		return t.string.Key
 	}
@@ -213,7 +213,7 @@ func (t *Token) ValueUnescapedString() string {
 }
 
 // Is checks if the token has any of these keys.
-func (t *Token) Is(key int, keys ...int) bool {
+func (t *Token) Is(key TokenKey, keys ...TokenKey) bool {
 	if t.key == key {
 		return true
 	}
