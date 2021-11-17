@@ -1,4 +1,4 @@
-# Tokenizer [![Build Status](https://github.com/bzick/tokenizer/actions/workflows/tokenizer.yml/badge.svg)](https://github.com/bzick/tokenizer/actions/workflows/tokenizer.yml) 
+# Tokenizer [![Build Status](https://github.com/bzick/tokenizer/actions/workflows/tokenizer.yml/badge.svg)](https://github.com/bzick/tokenizer/actions/workflows/tokenizer.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/bzick/tokenizer)](https://goreportcard.com/report/github.com/bzick/tokenizer)
 
 Tokenizer — parse any string, slice or infinite buffer to any tokens.
 
