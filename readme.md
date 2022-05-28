@@ -11,7 +11,7 @@ Main features:
 * High performance.
 * No regexp.
 * Provides [simple API](https://pkg.go.dev/github.com/bzick/tokenizer).
-* By default, support [integer](#integer-number) and [float](#float-number) numbers.
+* Supports [integer](#integer-number) and [float](#float-number) numbers.
 * Supports [quoted string or other "framed"](#framed-string) strings.
 * Supports [injection](#injection-in-framed-string) in quoted or "framed" strings.
 * Supports unicode.
@@ -22,12 +22,13 @@ Main features:
 * Parses [infinite incoming data](#parse-buffer) and don't panic.
 
 Use cases:
-- Parsing html, xml, json, yaml and other text formats.
-- Parsing any programming language.
-- Parsing string templates.
+- Parsing html, xml, [json](./example_test.go), yaml and other text formats.
+- Parsing huge or infinite texts. 
+- Parsing any programming languages.
+- Parsing templates.
 - Parsing formulas.
 
-For example parse formula `user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34`:
+For example, parsing SQL `WHERE` condition `user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34`:
 
 ```go
 // define custom tokens keys
@@ -44,10 +45,11 @@ parser.DefineTokens(TDot, []string{"."})
 parser.DefineTokens(TMath, []string{"+", "-", "/", "*", "%"})
 parser.DefineStringToken(`"`, `"`).SetEscapeSymbol(tokenizer.BackSlash)
 
-// parse data
+// create tokens stream
 stream := parser.ParseString(`user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34`)
 defer stream.Close()
 
+// iterate over each token
 for stream.Valid() {
 	if stream.CurrentToken().Is(tokenizer.TokenKeyword) {
 		field := stream.CurrentToken().ValueString()
@@ -57,8 +59,7 @@ for stream.Valid() {
 }
 ```
 
-parsing details:
-
+tokens stram:
 ```
 string:  user_id  =  119  and  modified  >  "2020-01-01 00:00:00"  or  amount  >=  122.34
 tokens: |user_id| =| 119| and| modified| >| "2020-01-01 00:00:00"| or| amount| >=| 122.34|
@@ -129,7 +130,7 @@ and the length of the original string.
 
 Any word that is not a custom token is stored in a single token as `tokenizer.TokenKeyword`.
 
-The word can contain unicode characters, numbers (see `tokenizer.AllowNumbersInKeyword ()`) and underscore (see `tokenizer.AllowKeywordUnderscore ()`).
+The word can contains unicode characters, numbers (see `tokenizer.AllowNumbersInKeyword ()`) and underscore (see `tokenizer.AllowKeywordUnderscore ()`).
 
 ```go
 parser.ParseString(`one two четыре`)
@@ -153,7 +154,7 @@ tokens: {
 
 ### Integer number
 
-Any integer is stored in one token `tokenizer.Token Integer`.
+Any integer is stored as one token with key `tokenizer.Token Integer`.
 
 ```go
 parser.ParseString(`223 999`)
@@ -180,7 +181,7 @@ fmt.Print("Token is %d", stream.GetInt())  // Token is 123
 
 ### Float number
 
-Any float number is stored in one token `tokenizer.TokenFloat`. Float number may
+Any float number is stored as one token with key `tokenizer.TokenFloat`. Float number may
 - have point, for example `1.2`
 - have exponent, for example `1e6`
 - have lower `e` or upper `E` letter in the exponent, for example `1E6`, `1e6`
@@ -316,7 +317,7 @@ parser.
 stream := parser.ParseString(`{"key": [1]}`)
 ```
 
-## Parsing string
+## Parse strings
 
 There is two ways to parse string/slice
 
@@ -341,7 +342,7 @@ for stream.IsValid() {
 
 ## Known issues
 
-* zero-byte `\0` will be ignored in the source string.
+* zero-byte `\0` ignores in the source string.
 
 ## Benchmark
 
