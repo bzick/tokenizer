@@ -176,7 +176,7 @@ To get int64 from the token value use `stream.GetInt()`:
 
 ```go
 stream := tokenizer.ParseString("123")
-fmt.Print("Token is %d", stream.GetInt())  // Token is 123
+fmt.Print("Token is %d", stream.CurrentToken().GetInt())  // Token is 123
 ```
 
 ### Float number
