@@ -7,13 +7,13 @@ import (
 )
 
 const (
-	TokenCurlyOpen    TokenKey = 1
-	TokenCurlyClose            = 2
-	TokenSquareOpen            = 3
-	TokenSquareClose           = 4
-	TokenColon                 = 5
-	TokenComma                 = 6
-	TokenDoubleQuoted          = 7
+	TokenCurlyOpen TokenKey = iota + 1
+	TokenCurlyClose
+	TokenSquareOpen
+	TokenSquareClose
+	TokenColon
+	TokenComma
+	TokenDoubleQuoted
 )
 
 // Example of JSON parser via tokenizer.

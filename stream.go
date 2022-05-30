@@ -37,7 +37,7 @@ func NewStream(p *parsing) *Stream {
 		current: p.head,
 		len:     p.n,
 		wsTail:  p.tail,
-		parsed:  p.pos + 1,
+		parsed:  p.parsed + p.pos,
 	}
 }
 
@@ -85,7 +85,11 @@ func (s *Stream) String() string {
 
 // GetParsedLength returns currently count parsed bytes.
 func (s *Stream) GetParsedLength() int {
-	return s.parsed
+	if s.p == nil {
+		return s.parsed
+	} else {
+		return s.p.parsed + s.p.pos
+	}
 }
 
 // GoNext moves stream pointer to next token
@@ -127,7 +131,7 @@ func (s *Stream) GoPrev() *Stream {
 	return s
 }
 
-// GoTo sets pointer of stream to the specific position.
+// GoTo sets pointer of stream to the specific token position (not data offset).
 func (s *Stream) GoTo(n int) *Stream {
 	if n > s.current.id {
 		for n != s.current.id && s.current != nil {

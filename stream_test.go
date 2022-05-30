@@ -16,6 +16,7 @@ func TestStream(t *testing.T) {
 	closeKey := TokenKey(13)
 	dquoteKey := TokenKey(14)
 	tokenizer.AllowKeywordUnderscore()
+	tokenizer.AllowNumbersInKeyword()
 	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
 	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})
 	tokenizer.DefineTokens(openKey, []string{"{{"})
@@ -24,9 +25,17 @@ func TestStream(t *testing.T) {
 
 	str := `field_a > 10 "value1" 12.3 "value2 {{ value3 }} value4"`
 	stream := tokenizer.ParseString(str)
+
+	require.Equal(t, len(str), stream.GetParsedLength())
+
 	require.True(t, stream.IsValid())
 	require.True(t, stream.NextToken().IsValid())
 	require.Equal(t, TokenKeyword, stream.CurrentToken().Key())
+	require.True(t, stream.CurrentToken().IsKeyword())
+	require.False(t, stream.CurrentToken().IsFloat())
+	require.False(t, stream.CurrentToken().IsInteger())
+	require.False(t, stream.CurrentToken().IsNumber())
+	require.False(t, stream.CurrentToken().IsString())
 	require.Equal(t, []byte("field_a"), stream.CurrentToken().Value())
 	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
 	require.Equal(t, "field_a", stream.CurrentToken().ValueUnescapedString())
@@ -50,6 +59,11 @@ func TestStream(t *testing.T) {
 	require.True(t, stream.GoNextIfNextIs(TokenInteger))
 
 	require.Equal(t, TokenInteger, stream.CurrentToken().Key())
+	require.False(t, stream.CurrentToken().IsKeyword())
+	require.False(t, stream.CurrentToken().IsFloat())
+	require.True(t, stream.CurrentToken().IsInteger())
+	require.True(t, stream.CurrentToken().IsNumber())
+	require.False(t, stream.CurrentToken().IsString())
 	require.Equal(t, int64(10), stream.CurrentToken().ValueInt())
 	require.Equal(t, float64(10.0), stream.CurrentToken().ValueFloat())
 	require.Equal(t, "10", stream.CurrentToken().ValueUnescapedString())
@@ -60,6 +74,15 @@ func TestStream(t *testing.T) {
 	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
 	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat())
 	require.Equal(t, "value1", stream.CurrentToken().ValueUnescapedString())
+
+	stream.GoTo(7)
+
+	require.Equal(t, "value3", stream.CurrentToken().ValueUnescapedString())
+	require.Equal(t, TokenKeyword, stream.CurrentToken().Key())
+	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
+	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat())
+
+	stream.Close()
 }
 
 func TestHistory(t *testing.T) {
@@ -176,7 +199,6 @@ func TestInfStream(t *testing.T) {
 var pattern = []byte(`<item count=10 valid id="n9762"> Носки <![CDATA[ socks ]]></item>`)
 
 type dataGenerator struct {
-	size int
 	i    int
 	data []byte
 }
@@ -226,7 +248,7 @@ func BenchmarkParseInfStream(b *testing.B) {
 		stream.GoNext()
 	}
 
-	dif := time.Now().Sub(t)
+	dif := time.Since(t)
 	b.Logf("Speed: %d bytes at %s: %d byte/sec", len(reader.data), dif, int(float64(len(reader.data))/dif.Seconds()))
 }
 
@@ -252,7 +274,7 @@ func BenchmarkParseBytes(b *testing.B) {
 	stream := tokenizer.ParseBytes(reader.data)
 	stream.IsValid()
 
-	dif := time.Now().Sub(t)
+	dif := time.Since(t)
 	size := len(reader.data)
 	b.Logf("Speed: %d bytes string with %s: %d byte/sec", size, dif, int(float64(size)/dif.Seconds()))
 }
