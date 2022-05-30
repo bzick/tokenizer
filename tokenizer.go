@@ -36,9 +36,9 @@ const (
 
 const (
 	fStopOnUnknown          uint16 = 0b1
-	fAllowKeywordUnderscore        = 0b10
-	fAllowNumberUnderscore         = 0b100
-	fAllowNumberInKeyword          = 0b1000
+	fAllowKeywordUnderscore uint16 = 0b10
+	fAllowNumberUnderscore  uint16 = 0b100
+	fAllowNumberInKeyword   uint16 = 0b1000
 )
 
 // BackSlash just backslash byte
