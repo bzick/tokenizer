@@ -35,10 +35,10 @@ const (
 )
 
 const (
-	fStopOnUnknown          = 0b1
-	fAllowKeywordUnderscore = 0b10
-	fAllowNumberUnderscore  = 0b100
-	fAllowNumberInKeyword   = 0b1000
+	fStopOnUnknown          uint16 = 0b1
+	fAllowKeywordUnderscore        = 0b10
+	fAllowNumberUnderscore         = 0b100
+	fAllowNumberInKeyword          = 0b1000
 )
 
 // BackSlash just backslash byte
@@ -111,9 +111,7 @@ type Tokenizer struct {
 	index   map[byte][]*tokenRef
 	quotes  []*StringSettings
 	wSpaces []byte
-	wsMap   map[byte]struct{}
-
-	pool sync.Pool
+	pool    sync.Pool
 }
 
 // New creates new tokenizer.

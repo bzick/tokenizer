@@ -23,10 +23,11 @@ type parsing struct {
 	ptr       *Token
 	tail      []byte
 	stopKeys  []*tokenRef
-	n         int
-	chunkSize int
+	n         int // tokens id generator
+	chunkSize int // chunks size for infinite buffer
 	offset    int
 	resume    bool
+	parsed    int
 }
 
 func newParser(t *Tokenizer, str []byte) *parsing {
@@ -139,9 +140,10 @@ func (p *parsing) loadChunk() int {
 	return n
 }
 
-// checkPoint truncate
+// checkPoint reset internal values for next chunk of data
 func (p *parsing) checkPoint() bool {
 	if p.pos > 0 {
+		p.parsed += p.pos
 		p.str = p.str[p.pos:]
 		p.offset += p.pos
 		p.pos = 0
