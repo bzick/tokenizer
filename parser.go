@@ -30,6 +30,7 @@ type parsing struct {
 	parsed    int
 }
 
+// newParser creates new parser for string
 func newParser(t *Tokenizer, str []byte) *parsing {
 	tok := t.allocToken()
 	tok.line = 1
