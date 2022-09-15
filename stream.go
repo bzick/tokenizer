@@ -58,7 +58,7 @@ func (s *Stream) SetHistorySize(size int) *Stream {
 	return s
 }
 
-// Close free all token objects to pool
+// Close releases all token objects to pool
 func (s *Stream) Close() {
 	for ptr := s.head; ptr != nil; {
 		p := ptr.next
@@ -119,7 +119,7 @@ func (s *Stream) GoNext() *Stream {
 	return s
 }
 
-// GoPrev move pointer of stream to the next token.
+// GoPrev moves pointer of stream to the next token.
 // The number of possible calls is limited if you specified SetHistorySize.
 // If the beginning of the stream or the end of the history is reached, the pointer will point to the TokenUndef token.
 func (s *Stream) GoPrev() *Stream {
@@ -248,7 +248,7 @@ func (s *Stream) NextToken() *Token {
 	return undefToken
 }
 
-// GoNextIfNextIs move stream pointer to the next token if the next token has specific token keys.
+// GoNextIfNextIs moves stream pointer to the next token if the next token has specific token keys.
 // If keys matched pointer will be updated and method returned true. Otherwise, returned false.
 func (s *Stream) GoNextIfNextIs(key TokenKey, otherKeys ...TokenKey) bool {
 	if s.NextToken().Is(key, otherKeys...) {
