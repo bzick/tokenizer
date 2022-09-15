@@ -79,6 +79,7 @@ func (t Token) IsInteger() bool {
 // ValueInt returns value as int64.
 // If the token is float the result wild be round by math's rules.
 // If the token is not TokenInteger or TokenFloat zero will be returned.
+// Method doesn't use cache. Each call starts a number parser.
 func (t Token) ValueInt() int64 {
 	if t.key == TokenInteger {
 		num, _ := strconv.ParseInt(b2s(t.value), 10, 64)
@@ -92,6 +93,7 @@ func (t Token) ValueInt() int64 {
 
 // ValueFloat returns value as float64.
 // If the token is not TokenInteger or TokenFloat zero will be returned.
+// Method doesn't use cache. Each call starts a number parser.
 func (t *Token) ValueFloat() float64 {
 	if t.key == TokenFloat {
 		num, _ := strconv.ParseFloat(b2s(t.value), 64)
@@ -170,6 +172,7 @@ func (t Token) IsString() bool {
 //		"one \"two\"\t three"
 // transforms to
 //		one "two"		three
+// Method doesn't use cache. Each call starts a string parser.
 func (t *Token) ValueUnescaped() []byte {
 	if t.string != nil {
 		from := 0

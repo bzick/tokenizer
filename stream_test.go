@@ -40,6 +40,20 @@ func TestStream(t *testing.T) {
 	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
 	require.Equal(t, "field_a", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, []byte(nil), stream.CurrentToken().Indent())
+	require.True(t, stream.IsNextSequence(condTokenKey, TokenInteger, TokenString, TokenFloat))
+	require.False(t, stream.IsNextSequence(condTokenKey, TokenInteger, TokenString, TokenInteger))
+	require.False(t, stream.IsNextSequence(condTokenKey, TokenFloat, TokenString, TokenFloat))
+	require.False(t, stream.IsNextSequence(condTokenKey, TokenInteger, TokenFloat, TokenFloat))
+	require.True(t, stream.IsAnyNextSequence(
+		[]TokenKey{condTokenKey},
+		[]TokenKey{TokenInteger},
+		[]TokenKey{TokenString},
+		[]TokenKey{TokenFloat, TokenInteger}))
+	require.False(t, stream.IsAnyNextSequence(
+		[]TokenKey{condTokenKey},
+		[]TokenKey{TokenInteger},
+		[]TokenKey{TokenString},
+		[]TokenKey{TokenString, TokenInteger}))
 
 	require.Equal(t, condTokenKey, stream.NextToken().Key())
 	require.Equal(t, []byte(">"), stream.NextToken().Value())
@@ -131,6 +145,27 @@ func TestHistory(t *testing.T) {
 	require.Equal(t, 1, tokens.HeadToken().ID())
 	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
 	require.Equal(t, 9, tokens.len)
+}
+
+func TestSequenceWithHistory(t *testing.T) {
+	tokenizer := New()
+	tokens := tokenizer.ParseString("0 1.1 2 3.3 4 5.5 6")
+	tokens.SetHistorySize(3)
+
+	require.True(t, tokens.IsNextSequence(TokenFloat, TokenInteger, TokenFloat, TokenInteger, TokenFloat, TokenInteger))
+	require.Equal(t, 0, tokens.CurrentToken().ID())
+	require.Equal(t, 3, tokens.historySize)
+
+	require.True(t, tokens.IsAnyNextSequence(
+		[]TokenKey{TokenFloat},
+		[]TokenKey{TokenInteger, TokenFloat},
+		[]TokenKey{TokenFloat},
+		[]TokenKey{TokenInteger, TokenFloat},
+		[]TokenKey{TokenFloat},
+		[]TokenKey{TokenInteger, TokenFloat}))
+	require.Equal(t, 0, tokens.CurrentToken().ID())
+	require.Equal(t, 3, tokens.historySize)
+
 }
 
 func TestInfStream(t *testing.T) {
