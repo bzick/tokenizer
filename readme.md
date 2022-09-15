@@ -82,6 +82,40 @@ tokens: |user_id| =| 119| and| modified| >| "2020-01-01 00:00:00"| or| amount| >
 More examples:
 - [JSON parser](./example_test.go)
 
+## Begin
+
+### Create and parse
+
+```go
+import (
+    "github.com/bzick/tokenizer"
+)
+
+var parser := tokenizer.New()
+parser.AllowKeywordUnderscore() // ... and other configuration code
+
+```
+
+There is two ways to **parse string or slice**:
+
+- `parser.ParseString(str)`
+- `parser.ParseBytes(slice)`
+
+The package allows to **parse an endless stream** of data into tokens.
+For parsing, you need to pass `io.Reader`, from which data will be read (chunk-by-chunk):
+
+```go
+fp, err := os.Open("data.json") // huge JSON file
+// check fs, configure tokenizer ...
+
+stream := parser.ParseStream(fp, 4096).SetHistorySize(10)
+defer stream.Close()
+for stream.IsValid() { 
+	// ...
+	stream.Next()
+}
+```
+
 ## Embedded tokens
 
 - `tokenizer.TokenUnknown` — unspecified token key. 
@@ -318,28 +352,6 @@ parser.
 stream := parser.ParseString(`{"key": [1]}`)
 ```
 
-## Parse strings
-
-There is two ways to parse string/slice
-
-- `parser.ParseString(str)`
-- `parser.ParseBytes(slice)`
-
-## Parse buffer
-
-The package allows to parse an endless stream of data into tokens.
-For parsing, you need to pass `io.Reader`, from which data will be read (chunk-by-chunk):
-
-```go
-fp, err := os.Open("data.json") // huge JSON file
-// check fs, configure tokenizer ...
-
-stream := parser.ParseStream(fp, 4096).SetHistorySize(10)
-for stream.IsValid() {
-	// ...
-	stream.Next()
-}
-```
 
 ## Known issues
 

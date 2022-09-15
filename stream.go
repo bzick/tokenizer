@@ -92,7 +92,9 @@ func (s *Stream) GetParsedLength() int {
 	}
 }
 
-// GoNext moves stream pointer to next token
+// GoNext moves stream pointer to the next token.
+// If there is no token, it initiates the parsing of the next chunk of data.
+// If there is no data, the pointer will point to the TokenUndef token.
 func (s *Stream) GoNext() *Stream {
 	if s.current.next != nil {
 		s.current = s.current.next
@@ -118,6 +120,8 @@ func (s *Stream) GoNext() *Stream {
 }
 
 // GoPrev move pointer of stream to the next token.
+// The number of possible calls is limited if you specified SetHistorySize.
+// If the beginning of the stream or the end of the history is reached, the pointer will point to the TokenUndef token.
 func (s *Stream) GoPrev() *Stream {
 	if s.current.prev != nil {
 		s.current = s.current.prev
@@ -131,14 +135,15 @@ func (s *Stream) GoPrev() *Stream {
 	return s
 }
 
-// GoTo sets pointer of stream to the specific token position (not data offset).
-func (s *Stream) GoTo(n int) *Stream {
-	if n > s.current.id {
-		for n != s.current.id && s.current != nil {
+// GoTo moves pointer of stream to specific token.
+// The search is done by token ID.
+func (s *Stream) GoTo(id int) *Stream {
+	if id > s.current.id {
+		for s.current != nil && id != s.current.id {
 			s.GoNext()
 		}
-	} else if n < s.current.id {
-		for s.current != nil && n != s.current.id {
+	} else if id < s.current.id {
+		for s.current != nil && id != s.current.id {
 			s.GoPrev()
 		}
 	}
@@ -149,6 +154,65 @@ func (s *Stream) GoTo(n int) *Stream {
 // This means that the pointer has not reached the end of the stream.
 func (s *Stream) IsValid() bool {
 	return s.current != undefToken
+}
+
+// IsNextSequence checks if these are next tokens in exactly the same sequence as specified.
+func (s *Stream) IsNextSequence(keys ...TokenKey) bool {
+	var (
+		result = true
+		hSize  = 0
+		id     = s.CurrentToken().ID()
+	)
+	if s.historySize > 0 && s.historySize < len(keys) {
+		hSize = s.historySize
+		s.historySize = len(keys)
+	}
+
+	for _, key := range keys {
+		if !s.GoNext().CurrentToken().Is(key) {
+			result = false
+			break
+		}
+	}
+	s.GoTo(id)
+
+	if hSize != 0 {
+		s.SetHistorySize(hSize)
+	}
+	return result
+}
+
+// IsAnyNextSequence checks that at least one token from each group is contained in a sequence of tokens
+func (s *Stream) IsAnyNextSequence(keys ...[]TokenKey) bool {
+	var (
+		result = true
+		hSize  = 0
+		id     = s.CurrentToken().ID()
+	)
+	if s.historySize > 0 && s.historySize < len(keys) {
+		hSize = s.historySize
+		s.historySize = len(keys)
+	}
+
+	for _, key := range keys {
+		found := false
+		for _, k := range key {
+			if s.GoNext().CurrentToken().Is(k) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			result = false
+			break
+		}
+	}
+	s.GoTo(id)
+
+	if hSize != 0 {
+		s.SetHistorySize(hSize)
+	}
+	return result
 }
 
 // HeadToken returns pointer to head-token
