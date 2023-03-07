@@ -60,7 +60,7 @@ for stream.Valid() {
 }
 ```
 
-tokens stram:
+tokens stream:
 ```
 string:  user_id  =  119  and  modified  >  "2020-01-01 00:00:00"  or  amount  >=  122.34
 tokens: |user_id| =| 119| and| modified| >| "2020-01-01 00:00:00"| or| amount| >=| 122.34|
