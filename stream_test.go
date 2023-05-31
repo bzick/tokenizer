@@ -15,8 +15,7 @@ func TestStream(t *testing.T) {
 	openKey := TokenKey(12)
 	closeKey := TokenKey(13)
 	dquoteKey := TokenKey(14)
-	tokenizer.AllowKeywordUnderscore()
-	tokenizer.AllowNumbersInKeyword()
+	tokenizer.AllowKeywordSymbols(Underscore, Numbers)
 	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
 	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})
 	tokenizer.DefineTokens(openKey, []string{"{{"})
@@ -312,4 +311,57 @@ func BenchmarkParseBytes(b *testing.B) {
 	dif := time.Since(t)
 	size := len(reader.data)
 	b.Logf("Speed: %d bytes string with %s: %d byte/sec", size, dif, int(float64(size)/dif.Seconds()))
+}
+
+func BenchmarkMap(b *testing.B) {
+	mp := map[byte]bool{
+		'0': true,
+		'1': true,
+		'2': true,
+		'3': true,
+		'4': true,
+		'5': true,
+		'6': true,
+		'7': true,
+		'8': true,
+		'9': true,
+	}
+
+	var x bool
+
+	for i := 0; i < b.N; i++ {
+		x = mp['9']
+	}
+
+	_ = x
+}
+
+func BenchmarkSlice(b *testing.B) {
+	s := []byte{
+		'0',
+		'1',
+		'2',
+		'3',
+		'4',
+		'5',
+		'6',
+		'7',
+		'8',
+		'9',
+		'A',
+		'B',
+		'C',
+		'D',
+		'E',
+		'F',
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, v := range s {
+			if v == 'F' {
+				break
+			}
+		}
+	}
+
 }

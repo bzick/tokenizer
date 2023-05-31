@@ -34,25 +34,21 @@ const (
 	TokenUndef TokenKey = 0
 )
 
-const (
-	fStopOnUnknown          uint16 = 0b1
-	fAllowKeywordUnderscore uint16 = 0b10
-	fAllowNumberUnderscore  uint16 = 0b100
-	fAllowNumberInKeyword   uint16 = 0b1000
-)
-
 // BackSlash just backslash byte
 const BackSlash = '\\'
 
-var defaultWhiteSpaces = []byte{' ', '\t', '\n', '\r'}
+var DefaultWhiteSpaces = []byte{' ', '\t', '\n', '\r'}
 
 // DefaultStringEscapes is default escaped symbols. Those symbols are often used everywhere.
-var DefaultStringEscapes = map[byte]byte{
-	'n':  '\n',
-	'r':  '\r',
-	't':  '\t',
-	'\\': '\\',
+var DefaultStringEscapes = []byte{
+	'n',
+	'r',
+	't',
+	'\\',
 }
+
+var Numbers = []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
+var Underscore = []rune{'_'}
 
 // tokenItem describes one token.
 type tokenRef struct {
@@ -76,7 +72,7 @@ type StringSettings struct {
 	StartToken   []byte
 	EndToken     []byte
 	EscapeSymbol byte
-	SpecSymbols  map[byte]byte
+	SpecSymbols  []byte
 	Injects      []QuoteInjectSettings
 }
 
@@ -97,7 +93,7 @@ func (q *StringSettings) SetEscapeSymbol(symbol byte) *StringSettings {
 }
 
 // SetSpecialSymbols set mapping of all escapable symbols for escape symbol, like \n, \t, \r.
-func (q *StringSettings) SetSpecialSymbols(special map[byte]byte) *StringSettings {
+func (q *StringSettings) SetSpecialSymbols(special []byte) *StringSettings {
 	q.SpecSymbols = special
 	return q
 }
@@ -105,23 +101,27 @@ func (q *StringSettings) SetSpecialSymbols(special map[byte]byte) *StringSetting
 // Tokenizer stores all tokens configuration and behaviors.
 type Tokenizer struct {
 	// bit flags
-	flags uint16
+	// flags                 uint16
+	stopOnUnknown         bool
+	allowNumberUnderscore bool
 	// all defined custom tokens {key: [token1, token2, ...], ...}
-	tokens  map[TokenKey][]*tokenRef
-	index   map[byte][]*tokenRef
-	quotes  []*StringSettings
-	wSpaces []byte
-	pool    sync.Pool
+	tokens         map[TokenKey][]*tokenRef
+	index          map[byte][]*tokenRef
+	quotes         []*StringSettings
+	wSpaces        []byte
+	kwMajorSymbols []rune
+	kwMinorSymbols []rune
+	pool           sync.Pool
 }
 
 // New creates new tokenizer.
 func New() *Tokenizer {
 	t := Tokenizer{
-		flags:   0,
+		// flags:   0,
 		tokens:  map[TokenKey][]*tokenRef{},
 		index:   map[byte][]*tokenRef{},
 		quotes:  []*StringSettings{},
-		wSpaces: defaultWhiteSpaces,
+		wSpaces: DefaultWhiteSpaces,
 	}
 	t.pool.New = func() interface{} {
 		return new(Token)
@@ -130,29 +130,38 @@ func New() *Tokenizer {
 }
 
 // SetWhiteSpaces sets custom whitespace symbols between tokens.
-// By default: {' ', '\t', '\n', '\r'}
+// By default: `{' ', '\t', '\n', '\r'}`
 func (t *Tokenizer) SetWhiteSpaces(ws []byte) *Tokenizer {
 	t.wSpaces = ws
 	return t
 }
 
+// AllowKeywordSymbols sets major and minor symbols for keywords.
+// Major symbols might be in begin, in middle and in the end of the keyword.
+// Minor symbols might be in middle and in the end of the keyword.
+//
+//	parser.AllowKeywordSymbols(tokenizer.Underscore, tokenizer.Numbers)
+//	// allows: "_one23", "_one2_two3"
+//	parser.AllowKeywordSymbols([]rune{'_', '@'}, tokenizer.Numbers)
+//	// allows: "one@23", "@one_two23", "_one23", "_one2_two3", "@@one___two@_9"
+//
+// Beware, the tokenizer does not control consecutive duplicates of these runes.
+// For example keyword might be "@@one@@@two".
+func (t *Tokenizer) AllowKeywordSymbols(majorSymbols []rune, minorSymbols []rune) *Tokenizer {
+	t.kwMajorSymbols = majorSymbols
+	t.kwMinorSymbols = minorSymbols
+	return t
+}
+
 // StopOnUndefinedToken stops parsing if unknown token detected.
 func (t *Tokenizer) StopOnUndefinedToken() *Tokenizer {
-	t.flags |= fStopOnUnknown
+	t.stopOnUnknown = true
 	return t
 }
 
-// AllowKeywordUnderscore allows underscore symbol in keywords, like `one_two` or `_three`
-func (t *Tokenizer) AllowKeywordUnderscore() *Tokenizer {
-	t.flags |= fAllowKeywordUnderscore
-	return t
-}
-
-// AllowNumbersInKeyword allows numbers in keywords, like `one1` or `r2d2`
-// The method allows numbers in keywords, but the keyword itself must not start with a number.
-// There should be no spaces between letters and numbers.
-func (t *Tokenizer) AllowNumbersInKeyword() *Tokenizer {
-	t.flags |= fAllowNumberInKeyword
+// AllowNumberUnderscore allows underscore symbol in numbers, like `1_000`
+func (t *Tokenizer) AllowNumberUnderscore() *Tokenizer {
+	t.allowNumberUnderscore = true
 	return t
 }
 
@@ -187,10 +196,12 @@ func (t *Tokenizer) DefineTokens(key TokenKey, tokens []string) *Tokenizer {
 // DefineStringToken defines a token string.
 // For example, a piece of data surrounded by quotes: "string in quotes" or 'string on sigle quotes'.
 // Arguments startToken and endToken defines open and close "quotes".
-//  - t.DefineStringToken("`", "`") - parse string "one `two three`" will be parsed as
-// 			[{key: TokenKeyword, value: "one"}, {key: TokenString, value: "`two three`"}]
-//  - t.DefineStringToken("//", "\n") - parse string "parse // like comment\n" will be parsed as
-//			[{key: TokenKeyword, value: "parse"}, {key: TokenString, value: "// like comment"}]
+//
+//   - `t.DefineStringToken("`", "`")` - parse string "one `two three`" will be parsed as
+//     [{key: TokenKeyword, value: "one"}, {key: TokenString, value: "`two three`"}]
+//
+//   - `t.DefineStringToken("//", "\n")` - parse string "parse // like comment\n" will be parsed as
+//     [{key: TokenKeyword, value: "parse"}, {key: TokenString, value: "// like comment"}]
 func (t *Tokenizer) DefineStringToken(key TokenKey, startToken, endToken string) *StringSettings {
 	q := &StringSettings{
 		Key:        key,
@@ -222,22 +233,32 @@ func (t *Tokenizer) freeToken(token *Token) {
 	t.pool.Put(token)
 }
 
-// ParseString parse the string into tokens
+// ParseString parse string into stream of tokens.
 func (t *Tokenizer) ParseString(str string) *Stream {
 	return t.ParseBytes(s2b(str))
 }
 
-// ParseBytes parse the bytes slice into tokens
+// ParseBytes parse and convert slice of bytes into stream of tokens.
 func (t *Tokenizer) ParseBytes(str []byte) *Stream {
 	p := newParser(t, str)
 	p.parse()
 	return NewStream(p)
 }
 
-// ParseStream parse the string into tokens.
+// ParseStream parse and convert infinite stream of bytes into infinite stream of tokens.
 func (t *Tokenizer) ParseStream(r io.Reader, bufferSize uint) *Stream {
 	p := newInfParser(t, r, bufferSize)
 	p.preload()
 	p.parse()
 	return NewInfStream(p)
+}
+
+func (t *Tokenizer) ParseInjectionString(str string, settings StringSettings) *Stream {
+	return t.ParseInjectionBytes(s2b(str), settings)
+}
+
+func (t *Tokenizer) ParseInjectionBytes(str []byte, settings StringSettings) *Stream {
+	p := newParser(t, str)
+	p.parseWithInjection(settings)
+	return NewStream(p)
 }

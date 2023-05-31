@@ -92,7 +92,7 @@ func TestTokenizeEdgeCases(t *testing.T) {
 		require.Equalf(t, v.tokens, stream.GetSnippet(10, 10), "parse data1 %s: %s", v.str, stream)
 	}
 
-	tokenizer.AllowNumbersInKeyword().AllowKeywordUnderscore()
+	tokenizer.AllowKeywordSymbols(Underscore, Numbers)
 
 	for _, v := range data2 {
 		stream := tokenizer.ParseBytes([]byte(v.str))
@@ -105,7 +105,7 @@ func TestTokenizeComplex(t *testing.T) {
 	compareTokenKey := TokenKey(10)
 	condTokenKey := TokenKey(11)
 	quoteTokenKey := TokenKey(14)
-	tokenizer.AllowKeywordUnderscore()
+	tokenizer.AllowKeywordSymbols(Underscore, nil)
 	tokenizer.DefineTokens(compareTokenKey, []string{">=", "<=", "==", ">", "<", "="})
 	tokenizer.DefineTokens(condTokenKey, []string{"and", "or"})
 	quote := tokenizer.DefineStringToken(quoteTokenKey, `"`, `"`).SetEscapeSymbol('\\')

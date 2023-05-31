@@ -200,7 +200,7 @@ func (p *parsing) parse() {
 		if p.curr == 0 {
 			break
 		}
-		if p.t.flags&fStopOnUnknown != 0 {
+		if p.t.stopOnUnknown {
 			break
 		}
 		p.token.key = TokenUnknown
@@ -214,6 +214,43 @@ func (p *parsing) parse() {
 	}
 	if len(p.token.indent) > 0 {
 		p.tail = p.token.indent
+	}
+}
+
+func (p *parsing) parseWithInjection(settings StringSettings) {
+	start := 0
+	for p.curr != 0 {
+		loop := true
+		for _, inject := range settings.Injects {
+			for _, token := range p.t.tokens[inject.StartKey] {
+				if p.match(token.Token, true) {
+					p.token.key = TokenStringFragment
+					p.token.value = p.str[start : p.pos-len(token.Token)]
+					p.emmitToken()
+					p.token.key = token.Key
+					p.token.value = token.Token
+					p.token.offset = p.offset + p.pos - len(token.Token)
+					p.emmitToken()
+					stopKeys := p.stopKeys // may be recursive quotes
+					p.stopKeys = p.t.tokens[inject.EndKey]
+					p.parse()
+					p.stopKeys = stopKeys
+					p.token.key = TokenStringFragment
+					p.token.offset = p.offset + p.pos
+					p.token.string = &settings
+					start = p.pos
+					loop = false
+					break
+				}
+			}
+			if !loop {
+				break
+			}
+		}
+		if p.curr == newLine {
+			p.line++
+		}
+		p.next()
 	}
 }
 
@@ -253,10 +290,7 @@ func (p *parsing) parseKeyword() bool {
 		var size int
 		p.ensureBytes(4)
 		r, size = utf8.DecodeRune(p.slice(p.pos, p.pos+4))
-		if unicode.IsLetter(r) ||
-			(p.t.flags&fAllowKeywordUnderscore != 0 && p.curr == '_') ||
-			(p.t.flags&fAllowNumberInKeyword != 0 && start != -1 && isNumberByte(p.curr)) {
-
+		if unicode.IsLetter(r) || runeExists(p.t.kwMajorSymbols, r) || (start != -1 && runeExists(p.t.kwMinorSymbols, r)) {
 			if start == -1 {
 				start = p.pos
 			}
@@ -296,7 +330,7 @@ func (p *parsing) parseNumber() bool {
 					start = p.pos
 				}
 			}
-		} else if p.t.flags&fAllowNumberUnderscore != 0 && p.curr == '_' {
+		} else if p.t.allowNumberUnderscore && p.curr == '_' {
 			if stage != stageCoefficient {
 				break
 			}

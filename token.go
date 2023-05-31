@@ -46,7 +46,7 @@ func (t *Token) ID() int {
 }
 
 // String returns a multiline string with the token's information.
-func (t Token) String() string {
+func (t *Token) String() string {
 	return fmt.Sprintf("{\n\tId: %d\n\tKey: %d\n\tValue: %s\n\tPosition: %d\n\tIndent: %d bytes\n\tLine: %d\n}",
 		t.id, t.key, t.value, t.offset, len(t.indent), t.line)
 }
@@ -57,22 +57,22 @@ func (t *Token) IsValid() bool {
 }
 
 // IsKeyword checks if this is keyword — the key is TokenKeyword.
-func (t Token) IsKeyword() bool {
+func (t *Token) IsKeyword() bool {
 	return t.key == TokenKeyword
 }
 
 // IsNumber checks if this token is integer or float — the key is TokenInteger or TokenFloat.
-func (t Token) IsNumber() bool {
+func (t *Token) IsNumber() bool {
 	return t.key == TokenInteger || t.key == TokenFloat
 }
 
 // IsFloat checks if this token is float — the key is TokenFloat.
-func (t Token) IsFloat() bool {
+func (t *Token) IsFloat() bool {
 	return t.key == TokenFloat
 }
 
 // IsInteger checks if this token is integer — the key is TokenInteger.
-func (t Token) IsInteger() bool {
+func (t *Token) IsInteger() bool {
 	return t.key == TokenInteger
 }
 
@@ -80,7 +80,7 @@ func (t Token) IsInteger() bool {
 // If the token is float the result wild be round by math's rules.
 // If the token is not TokenInteger or TokenFloat zero will be returned.
 // Method doesn't use cache. Each call starts a number parser.
-func (t Token) ValueInt() int64 {
+func (t *Token) ValueInt() int64 {
 	if t.key == TokenInteger {
 		num, _ := strconv.ParseInt(b2s(t.value), 10, 64)
 		return num
@@ -160,18 +160,22 @@ func (t *Token) StringKey() TokenKey {
 
 // IsString checks if current token is a quoted string.
 // Token key may be TokenString or TokenStringFragment.
-func (t Token) IsString() bool {
+func (t *Token) IsString() bool {
 	return t.key == TokenString || t.key == TokenStringFragment
 }
 
 // ValueUnescaped returns clear (unquoted) string
-//  - without edge-tokens (quotes)
-//  - with character escaping handling
+//   - without edge-tokens (quotes)
+//   - with character escaping handling
 //
 // For example quoted string
-//		"one \"two\"\t three"
+//
+//	"one \"two\"\t three"
+//
 // transforms to
-//		one "two"		three
+//
+//	one "two"		three
+//
 // Method doesn't use cache. Each call starts a string parser.
 func (t *Token) ValueUnescaped() []byte {
 	if t.string != nil {
@@ -189,9 +193,9 @@ func (t *Token) ValueUnescaped() []byte {
 		start := 0
 		for i := 0; i < len(str); i++ {
 			if escaping {
-				if v, ok := t.string.SpecSymbols[str[i]]; ok {
+				if byteExists(t.string.SpecSymbols, str[i]) {
 					result = append(result, t.value[start:i]...)
-					result = append(result, v)
+					result = append(result, str[i])
 				}
 				start = i
 				escaping = false
@@ -225,6 +229,24 @@ func (t *Token) Is(key TokenKey, keys ...TokenKey) bool {
 			if t.key == k {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func byteExists(s []byte, v byte) bool {
+	for _, val := range s {
+		if val == v {
+			return true
+		}
+	}
+	return false
+}
+
+func runeExists(s []rune, v rune) bool {
+	for _, val := range s {
+		if val == v {
+			return true
 		}
 	}
 	return false

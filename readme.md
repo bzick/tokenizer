@@ -165,7 +165,7 @@ and the length of the original string.
 
 Any word that is not a custom token is stored in a single token as `tokenizer.TokenKeyword`.
 
-The word can contains unicode characters, numbers (see `tokenizer.AllowNumbersInKeyword ()`) and underscore (see `tokenizer.AllowKeywordUnderscore ()`).
+The word can contains unicode characters, numbers (see `tokenizer.AllowNumbersInKeyword()`) and underscore (see `tokenizer.AllowKeywordUnderscore ()`).
 
 ```go
 parser.ParseString(`one two четыре`)
