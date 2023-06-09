@@ -53,7 +53,7 @@ defer stream.Close()
 // iterate over each token
 for stream.Valid() {
 	if stream.CurrentToken().Is(tokenizer.TokenKeyword) {
-		field := stream.CurrentToken().ValueString()
+		field := stream.NextToken().ValueString()
 		// ... 
 	}
 	stream.Next()
@@ -130,7 +130,7 @@ for stream.IsValid() {
 A token marks as `TokenUnknown` if the parser detects an unknown token:
 
 ```go
-parser.ParseString(`one!`)
+stream := parser.ParseString(`one!`)
 ```
 ```
 {
@@ -146,8 +146,11 @@ parser.ParseString(`one!`)
 ```
 
 By default, `TokenUnknown` tokens are added to the stream. 
-To exclude them from the stream, use the `tokenizer.StopOnUndefinedToken()` method
+Setting `tokenizer.StopOnUndefinedToken()` stops parser  when `tokenizer.TokenUnknown` appears in stream.
 
+```go
+stream := parser.ParseString(`one!`)
+```
 ```
 {
     {
@@ -165,7 +168,7 @@ and the length of the original string.
 
 Any word that is not a custom token is stored in a single token as `tokenizer.TokenKeyword`.
 
-The word can contains unicode characters, numbers (see `tokenizer.AllowNumbersInKeyword()`) and underscore (see `tokenizer.AllowKeywordUnderscore ()`).
+The word can contain unicode characters, numbers (see `tokenizer.AllowNumbersInKeyword()`) and underscore (see `tokenizer.AllowKeywordUnderscore ()`).
 
 ```go
 parser.ParseString(`one two четыре`)
@@ -186,6 +189,8 @@ tokens: {
     }
 }
 ```
+
+Keyword may be modified with `tokenizer.AllowKeywordSymbols(majorSymbols, minorSymbols)`
 
 ### Integer number
 

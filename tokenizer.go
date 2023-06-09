@@ -137,13 +137,13 @@ func (t *Tokenizer) SetWhiteSpaces(ws []byte) *Tokenizer {
 }
 
 // AllowKeywordSymbols sets major and minor symbols for keywords.
-// Major symbols might be in begin, in middle and in the end of the keyword.
-// Minor symbols might be in middle and in the end of the keyword.
+// Major symbols (any quantity) might be in begin, in middle and in the end of keyword.
+// Minor symbols (any quantity) might be in middle and in the end of the keyword.
 //
 //	parser.AllowKeywordSymbols(tokenizer.Underscore, tokenizer.Numbers)
-//	// allows: "_one23", "_one2_two3"
+//	// allows: "_one23", "__one2__two3"
 //	parser.AllowKeywordSymbols([]rune{'_', '@'}, tokenizer.Numbers)
-//	// allows: "one@23", "@one_two23", "_one23", "_one2_two3", "@@one___two@_9"
+//	// allows: "one@23", "@_one_two23", "_one23", "_one2_two3", "@@one___two@_9"
 //
 // Beware, the tokenizer does not control consecutive duplicates of these runes.
 // For example keyword might be "@@one@@@two".
@@ -251,14 +251,4 @@ func (t *Tokenizer) ParseStream(r io.Reader, bufferSize uint) *Stream {
 	p.preload()
 	p.parse()
 	return NewInfStream(p)
-}
-
-func (t *Tokenizer) ParseInjectionString(str string, settings StringSettings) *Stream {
-	return t.ParseInjectionBytes(s2b(str), settings)
-}
-
-func (t *Tokenizer) ParseInjectionBytes(str []byte, settings StringSettings) *Stream {
-	p := newParser(t, str)
-	p.parseWithInjection(settings)
-	return NewStream(p)
 }
