@@ -125,15 +125,15 @@ for stream.IsValid() {
 - `tokenizer.TokenString` — quoted string
 - `tokenizer.TokenStringFragment` — fragment framed (quoted) string 
 
-### Unknown token — `tokenizer.TokenUnknown`
+### Unknown token
 
-A token marks as `TokenUnknown` if the parser detects an unknown token:
+A token marks as `tokenizer.TokenUnknown` if the parser detects an unknown token:
 
 ```go
 stream := parser.ParseString(`one!`)
 ```
 ```
-{
+stream: [
     {
         Key: tokenizer.TokenKeyword
         Value: "One"
@@ -142,7 +142,7 @@ stream := parser.ParseString(`one!`)
         Key: tokenizer.TokenUnknown
         Value: "!"
     }
-}
+]
 ```
 
 By default, `TokenUnknown` tokens are added to the stream. 
@@ -152,15 +152,15 @@ Setting `tokenizer.StopOnUndefinedToken()` stops parser  when `tokenizer.TokenUn
 stream := parser.ParseString(`one!`)
 ```
 ```
-{
+stream: [
     {
         Key: tokenizer.TokenKeyword
         Value: "one"
     }
-}
+]
 ```
 
-Please note that if the `tokenizer.StopOnUndefinedToken` setting is enabled, then the string may not be fully parsed.
+Please note that if the `StopOnUndefinedToken()` setting is enabled, then the string may not be fully parsed.
 To find out that the string was not fully parsed, check the length of the parsed string `stream.GetParsedLength()`
 and the length of the original string.
 
@@ -171,36 +171,47 @@ Any word that is not a custom token is stored in a single token as `tokenizer.To
 The word can contain unicode characters, numbers (see `tokenizer.AllowNumbersInKeyword()`) and underscore (see `tokenizer.AllowKeywordUnderscore ()`).
 
 ```go
-stream := parser.ParseString(`one two четыре`)
+stream := parser.ParseString(`one 二 три`)
 ```
 ```
-tokens: {
+stream: [
     {
         Key: tokenizer.TokenKeyword
         Value: "one"
     },
     {
         Key: tokenizer.TokenKeyword
-        Value: "two"
+        Value: "二"
     },
     {
         Key: tokenizer.TokenKeyword
-        Value: "четыре"
+        Value: "три"
     }
-}
+]
 ```
 
 Keyword may be modified with `tokenizer.AllowKeywordSymbols(majorSymbols, minorSymbols)`
 
-### Integer number
-
-Any integer is stored as one token with key `tokenizer.Token Integer`.
+- Major symbols (any quantity in the keyword) can be at the beginning, in the middle and in the end of the keyword.
+- Minor symbols (any quantity in the keyword) can be in the middle and in the end of the keyword.
 
 ```go
-parser.ParseString(`223 999`)
+parser.AllowKeywordSymbols(tokenizer.Underscore, tokenizer.Numbers)
+// allows: "_one23", "__one2__two3"
+
+parser.AllowKeywordSymbols([]rune{'_', '@'}, tokenizer.Numbers)
+// allows: "one@23", "@_one_two23", "_one23", "_one2_two3", "@@one___two@_9"
+```
+
+### Integer number
+
+Any integer is stored as one token with key `tokenizer.TokenInteger`.
+
+```go
+stream := parser.ParseString(`223 999`)
 ```
 ```
-tokens: {
+stream: [
     {
         Key: tokenizer.TokenInteger
         Value: "223"
@@ -209,7 +220,7 @@ tokens: {
         Key: tokenizer.TokenInteger
         Value: "999"
     },
-}
+]
 ```
 
 To get int64 from the token value use `stream.GetInt()`:
@@ -227,20 +238,22 @@ Any float number is stored as one token with key `tokenizer.TokenFloat`. Float n
 - have lower `e` or upper `E` letter in the exponent, for example `1E6`, `1e6`
 - have sign in the exponent, for example `1e-6`, `1e6`, `1e+6`
 
+```go
+stream := parser.ParseString(`1.3e-8`):
 ```
-tokenizer.ParseString(`1.3e-8`):
-{
+```
+stream: [
     {
         Key: tokenizer.TokenFloat
         Value: "1.3e-8"
     },
-}
+]
 ```
 
 To get float64 from the token value use `token.GetFloat()`:
 
 ```go
-stream := tokenizer.ParseString("1.3e2")
+stream := parser.ParseString("1.3e2")
 fmt.Print("Token is %d", stream.CurrentToken().GetFloat())  // Token is 130
 ```
 
@@ -249,33 +262,36 @@ fmt.Print("Token is %d", stream.CurrentToken().GetFloat())  // Token is 130
 Strings that are framed with tokens are called framed strings. An obvious example is quoted a string like `"one two"`.
 There quotes — edge tokens.
 
-You can create and customize framed string through `tokenizer.AddQuote()`:
+You can create and customize framed string through `tokenizer.DefineStringToken()`:
 
 ```go
 const TokenDoubleQuotedString = 10
-tokenizer.DefineStringToken(TokenDoubleQuotedString, `"`, `"`).SetEscapeSymbol('\\')
-
-stream := tokenizer.ParseString(`"two \"three"`)
+// ...
+parser.DefineStringToken(TokenDoubleQuotedString, `"`, `"`).SetEscapeSymbol('\\')
+// ...
+stream := parser.ParseString(`"two \"three"`)
 ```
 ```
-{
+stream: [
     {
         Key: tokenizer.TokenString
         Value: "\"two \\"three\""
     },
-}
+]
 ```
 
 To get a framed string without edge tokens and special characters, use the `stream.ValueUnescape()` method:
 
 ```go
-v := stream.CurrentToken().ValueUnescape() // result: two "three
+value := stream.CurrentToken().ValueUnescape() // result: two "three
 ```
 
 The method `token.StringKey()` will be return token string key defined in the `DefineStringToken`:
 
 ```go
-stream.CurrentToken().StringKey() == TokenDoubleQuotedString // true
+if stream.CurrentToken().StringKey() == TokenDoubleQuotedString {
+	// true
+}
 ```
 
 ### Injection in framed string
@@ -329,7 +345,7 @@ Use cases:
 
 ## User defined tokens
 
-The new token can be defined via the `DefineTokens` method:
+The new token can be defined via the `DefineTokens()` method:
 
 ```go
 

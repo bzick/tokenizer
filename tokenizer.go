@@ -144,7 +144,6 @@ func (t *Tokenizer) SetWhiteSpaces(ws []byte) *Tokenizer {
 //	// allows: "one@23", "@_one_two23", "_one23", "_one2_two3", "@@one___two@_9"
 //
 // Beware, the tokenizer does not control consecutive duplicates of these runes.
-// For example keyword might be "@@one@@@two".
 func (t *Tokenizer) AllowKeywordSymbols(majorSymbols []rune, minorSymbols []rune) *Tokenizer {
 	t.kwMajorSymbols = majorSymbols
 	t.kwMinorSymbols = minorSymbols
@@ -154,9 +153,6 @@ func (t *Tokenizer) AllowKeywordSymbols(majorSymbols []rune, minorSymbols []rune
 // AllowKeywordUnderscore allows underscore symbol in keywords, like `one_two` or `_three`
 // Deprecated: use AllowKeywordSymbols
 func (t *Tokenizer) AllowKeywordUnderscore() *Tokenizer {
-	if t.kwMajorSymbols != nil {
-		t.kwMajorSymbols = []rune{'_'}
-	}
 	t.kwMajorSymbols = append(t.kwMajorSymbols, '_')
 	return t
 }
@@ -166,9 +162,6 @@ func (t *Tokenizer) AllowKeywordUnderscore() *Tokenizer {
 // There should be no spaces between letters and numbers.
 // Deprecated: use AllowKeywordSymbols
 func (t *Tokenizer) AllowNumbersInKeyword() *Tokenizer {
-	if t.kwMajorSymbols != nil {
-		t.kwMinorSymbols = Numbers
-	}
 	t.kwMinorSymbols = append(t.kwMinorSymbols, Numbers...)
 	return t
 }
