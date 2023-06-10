@@ -15,6 +15,8 @@ func TestStream(t *testing.T) {
 	openKey := TokenKey(12)
 	closeKey := TokenKey(13)
 	dquoteKey := TokenKey(14)
+	// tokenizer.AllowKeywordUnderscore()
+	// tokenizer.AllowNumbersInKeyword()
 	tokenizer.AllowKeywordSymbols(Underscore, Numbers)
 	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
 	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})

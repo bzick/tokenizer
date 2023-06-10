@@ -146,7 +146,7 @@ stream := parser.ParseString(`one!`)
 ```
 
 By default, `TokenUnknown` tokens are added to the stream. 
-Setting `tokenizer.StopOnUndefinedToken()` stops parser  when `tokenizer.TokenUnknown` appears in stream.
+Setting `tokenizer.StopOnUndefinedToken()` stops parser  when `tokenizer.TokenUnknown` appears in the stream.
 
 ```go
 stream := parser.ParseString(`one!`)
@@ -171,7 +171,7 @@ Any word that is not a custom token is stored in a single token as `tokenizer.To
 The word can contain unicode characters, numbers (see `tokenizer.AllowNumbersInKeyword()`) and underscore (see `tokenizer.AllowKeywordUnderscore ()`).
 
 ```go
-parser.ParseString(`one two четыре`)
+stream := parser.ParseString(`one two четыре`)
 ```
 ```
 tokens: {

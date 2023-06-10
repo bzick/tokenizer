@@ -217,43 +217,6 @@ func (p *parsing) parse() {
 	}
 }
 
-func (p *parsing) parseWithInjection(settings StringSettings) {
-	start := 0
-	for p.curr != 0 {
-		loop := true
-		for _, inject := range settings.Injects {
-			for _, token := range p.t.tokens[inject.StartKey] {
-				if p.match(token.Token, true) {
-					p.token.key = TokenStringFragment
-					p.token.value = p.str[start : p.pos-len(token.Token)]
-					p.emmitToken()
-					p.token.key = token.Key
-					p.token.value = token.Token
-					p.token.offset = p.offset + p.pos - len(token.Token)
-					p.emmitToken()
-					stopKeys := p.stopKeys // may be recursive quotes
-					p.stopKeys = p.t.tokens[inject.EndKey]
-					p.parse()
-					p.stopKeys = stopKeys
-					p.token.key = TokenStringFragment
-					p.token.offset = p.offset + p.pos
-					p.token.string = &settings
-					start = p.pos
-					loop = false
-					break
-				}
-			}
-			if !loop {
-				break
-			}
-		}
-		if p.curr == newLine {
-			p.line++
-		}
-		p.next()
-	}
-}
-
 func (p *parsing) parseWhitespace() bool {
 	var start = -1
 	for p.curr != 0 {

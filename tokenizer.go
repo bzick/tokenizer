@@ -100,8 +100,6 @@ func (q *StringSettings) SetSpecialSymbols(special []byte) *StringSettings {
 
 // Tokenizer stores all tokens configuration and behaviors.
 type Tokenizer struct {
-	// bit flags
-	// flags                 uint16
 	stopOnUnknown         bool
 	allowNumberUnderscore bool
 	// all defined custom tokens {key: [token1, token2, ...], ...}
@@ -150,6 +148,28 @@ func (t *Tokenizer) SetWhiteSpaces(ws []byte) *Tokenizer {
 func (t *Tokenizer) AllowKeywordSymbols(majorSymbols []rune, minorSymbols []rune) *Tokenizer {
 	t.kwMajorSymbols = majorSymbols
 	t.kwMinorSymbols = minorSymbols
+	return t
+}
+
+// AllowKeywordUnderscore allows underscore symbol in keywords, like `one_two` or `_three`
+// Deprecated: use AllowKeywordSymbols
+func (t *Tokenizer) AllowKeywordUnderscore() *Tokenizer {
+	if t.kwMajorSymbols != nil {
+		t.kwMajorSymbols = []rune{'_'}
+	}
+	t.kwMajorSymbols = append(t.kwMajorSymbols, '_')
+	return t
+}
+
+// AllowNumbersInKeyword allows numbers in keywords, like `one1` or `r2d2`
+// The method allows numbers in keywords, but the keyword itself must not start with a number.
+// There should be no spaces between letters and numbers.
+// Deprecated: use AllowKeywordSymbols
+func (t *Tokenizer) AllowNumbersInKeyword() *Tokenizer {
+	if t.kwMajorSymbols != nil {
+		t.kwMinorSymbols = Numbers
+	}
+	t.kwMinorSymbols = append(t.kwMinorSymbols, Numbers...)
 	return t
 }
 
