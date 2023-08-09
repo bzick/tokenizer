@@ -46,6 +46,12 @@ var DefaultStringEscapes = []byte{
 	't',
 	'\\',
 }
+var DefaultSpecialString = []string{
+	"\\",
+	"n",
+	"r",
+	"t",
+}
 
 var Numbers = []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
 var Underscore = []rune{'_'}
@@ -72,7 +78,7 @@ type StringSettings struct {
 	StartToken   []byte
 	EndToken     []byte
 	EscapeSymbol byte
-	SpecSymbols  []byte
+	SpecSymbols  [][]byte
 	Injects      []QuoteInjectSettings
 }
 
@@ -93,8 +99,17 @@ func (q *StringSettings) SetEscapeSymbol(symbol byte) *StringSettings {
 }
 
 // SetSpecialSymbols set mapping of all escapable symbols for escape symbol, like \n, \t, \r.
+// Deprecated: use AddSpecialStrings
 func (q *StringSettings) SetSpecialSymbols(special []byte) *StringSettings {
-	q.SpecSymbols = special
+	q.SpecSymbols = append(q.SpecSymbols, special)
+	return q
+}
+
+// AddSpecialStrings set mapping of all escapable string for escape symbol, like \n, \t, \r.
+func (q *StringSettings) AddSpecialStrings(special []string) *StringSettings {
+	for _, s := range special {
+		q.SpecSymbols = append(q.SpecSymbols, []byte(s))
+	}
 	return q
 }
 

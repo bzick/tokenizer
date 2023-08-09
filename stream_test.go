@@ -38,7 +38,7 @@ func TestStream(t *testing.T) {
 	require.False(t, stream.CurrentToken().IsNumber())
 	require.False(t, stream.CurrentToken().IsString())
 	require.Equal(t, []byte("field_a"), stream.CurrentToken().Value())
-	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
+	require.Equal(t, int64(0), stream.CurrentToken().ValueInt64())
 	require.Equal(t, "field_a", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, []byte(nil), stream.CurrentToken().Indent())
 	require.True(t, stream.IsNextSequence(condTokenKey, TokenInteger, TokenString, TokenFloat))
@@ -65,8 +65,8 @@ func TestStream(t *testing.T) {
 	require.True(t, stream.CurrentToken().IsValid())
 	require.Equal(t, condTokenKey, stream.CurrentToken().Key())
 	require.Equal(t, []byte(">"), stream.CurrentToken().Value())
-	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
-	require.Equal(t, float64(0.0), stream.CurrentToken().ValueFloat())
+	require.Equal(t, int64(0), stream.CurrentToken().ValueInt64())
+	require.Equal(t, float64(0.0), stream.CurrentToken().ValueFloat64())
 	require.Equal(t, ">", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, []byte(" "), stream.CurrentToken().Indent())
 
@@ -79,23 +79,23 @@ func TestStream(t *testing.T) {
 	require.True(t, stream.CurrentToken().IsInteger())
 	require.True(t, stream.CurrentToken().IsNumber())
 	require.False(t, stream.CurrentToken().IsString())
-	require.Equal(t, int64(10), stream.CurrentToken().ValueInt())
-	require.Equal(t, float64(10.0), stream.CurrentToken().ValueFloat())
+	require.Equal(t, int64(10), stream.CurrentToken().ValueInt64())
+	require.Equal(t, float64(10.0), stream.CurrentToken().ValueFloat64())
 	require.Equal(t, "10", stream.CurrentToken().ValueUnescapedString())
 
 	stream.GoNext()
 
 	require.Equal(t, TokenString, stream.CurrentToken().Key())
-	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
-	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat())
+	require.Equal(t, int64(0), stream.CurrentToken().ValueInt64())
+	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat64())
 	require.Equal(t, "value1", stream.CurrentToken().ValueUnescapedString())
 
 	stream.GoTo(7)
 
 	require.Equal(t, "value3", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, TokenKeyword, stream.CurrentToken().Key())
-	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
-	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat())
+	require.Equal(t, int64(0), stream.CurrentToken().ValueInt64())
+	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat64())
 
 	stream.Close()
 }
@@ -106,27 +106,27 @@ func TestHistory(t *testing.T) {
 	tokens.SetHistorySize(3)
 
 	require.Equal(t, 0, tokens.CurrentToken().ID())
-	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 0, tokens.HeadToken().ID())
-	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(0), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 10, tokens.len)
 
 	tokens.GoNext()
 	tokens.GoNext()
 
 	require.Equal(t, 2, tokens.CurrentToken().ID())
-	require.Equal(t, int64(2), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(2), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 0, tokens.HeadToken().ID())
-	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(0), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 10, tokens.len)
 
 	tokens.GoNext()
 	tokens.GoNext()
 
 	require.Equal(t, 4, tokens.CurrentToken().ID())
-	require.Equal(t, int64(4), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(4), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 1, tokens.HeadToken().ID())
-	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(1), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 9, tokens.len)
 
 	tokens.GoPrev()
@@ -134,17 +134,17 @@ func TestHistory(t *testing.T) {
 	tokens.GoPrev()
 
 	require.Equal(t, 1, tokens.CurrentToken().ID())
-	require.Equal(t, int64(1), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(1), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 1, tokens.HeadToken().ID())
-	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(1), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 9, tokens.len)
 
 	tokens.GoPrev()
 
 	require.Equal(t, -1, tokens.CurrentToken().ID())
-	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 1, tokens.HeadToken().ID())
-	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(1), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 9, tokens.len)
 }
 
@@ -202,7 +202,7 @@ func TestInfStream(t *testing.T) {
 		stream.GoNext()
 
 		require.True(t, stream.CurrentToken().Is(TokenInteger))
-		id := stream.CurrentToken().ValueInt()
+		id := stream.CurrentToken().ValueInt64()
 		stream.GoNext()
 
 		require.True(t, stream.CurrentToken().Is(commaKey))

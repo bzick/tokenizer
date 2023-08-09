@@ -35,7 +35,7 @@ func newJSONParser() *jsonParser {
 		DefineTokens(TokenColon, []string{":"}).
 		DefineTokens(TokenComma, []string{","}).
 		DefineStringToken(TokenDoubleQuoted, `"`, `"`).
-		SetEscapeSymbol(BackSlash).SetSpecialSymbols(DefaultStringEscapes)
+		SetEscapeSymbol(BackSlash).AddSpecialStrings(DefaultSpecialString)
 
 	return parser
 }
@@ -98,10 +98,10 @@ func (parser *jsonParser) analyzer(stream *Stream) (interface{}, error) {
 		}
 	} else if stream.CurrentToken().Is(TokenInteger) { // analyze numbers
 		defer stream.GoNext()
-		return stream.CurrentToken().ValueInt(), nil
+		return stream.CurrentToken().ValueInt64(), nil
 	} else if stream.CurrentToken().Is(TokenFloat) { // analyze floats
 		defer stream.GoNext()
-		return stream.CurrentToken().ValueFloat(), nil
+		return stream.CurrentToken().ValueFloat64(), nil
 	} else if stream.CurrentToken().Is(TokenString) { // analyze strings
 		defer stream.GoNext()
 		return stream.CurrentToken().ValueUnescapedString(), nil
