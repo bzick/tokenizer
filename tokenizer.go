@@ -39,6 +39,8 @@ const (
 	fAllowKeywordUnderscore uint16 = 0b10
 	fAllowNumberUnderscore  uint16 = 0b100
 	fAllowNumberInKeyword   uint16 = 0b1000
+	fAllowAtInKeyword       uint16 = 0b10000
+	fAllowDotInKeyword      uint16 = 0b100000
 )
 
 // BackSlash just backslash byte
@@ -156,6 +158,22 @@ func (t *Tokenizer) AllowNumbersInKeyword() *Tokenizer {
 	return t
 }
 
+// AllowAtInKeyword allows symbol '@' in keywords
+// The method allows ats in keywords, but the keyword itself must not start with an at.
+// There should be no spaces between letters and ats.
+func (t *Tokenizer) AllowAtInKeyword() *Tokenizer {
+	t.flags |= fAllowAtInKeyword
+	return t
+}
+
+// AllowDotInKeyword allows symbol '.' in keywords
+// The method allows dots in keywords, but the keyword itself must not start with a dot.
+// There should be no spaces between letters and dots.
+func (t *Tokenizer) AllowDotInKeyword() *Tokenizer {
+	t.flags |= fAllowDotInKeyword
+	return t
+}
+
 // DefineTokens add custom token.
 // There `key` unique is identifier of `tokens`, `tokens` — slice of string of tokens.
 // If key already exists tokens will be rewritten.
@@ -187,10 +205,10 @@ func (t *Tokenizer) DefineTokens(key TokenKey, tokens []string) *Tokenizer {
 // DefineStringToken defines a token string.
 // For example, a piece of data surrounded by quotes: "string in quotes" or 'string on sigle quotes'.
 // Arguments startToken and endToken defines open and close "quotes".
-//  - t.DefineStringToken("`", "`") - parse string "one `two three`" will be parsed as
-// 			[{key: TokenKeyword, value: "one"}, {key: TokenString, value: "`two three`"}]
-//  - t.DefineStringToken("//", "\n") - parse string "parse // like comment\n" will be parsed as
-//			[{key: TokenKeyword, value: "parse"}, {key: TokenString, value: "// like comment"}]
+//   - t.DefineStringToken("`", "`") - parse string "one `two three`" will be parsed as
+//     [{key: TokenKeyword, value: "one"}, {key: TokenString, value: "`two three`"}]
+//   - t.DefineStringToken("//", "\n") - parse string "parse // like comment\n" will be parsed as
+//     [{key: TokenKeyword, value: "parse"}, {key: TokenString, value: "// like comment"}]
 func (t *Tokenizer) DefineStringToken(key TokenKey, startToken, endToken string) *StringSettings {
 	q := &StringSettings{
 		Key:        key,
