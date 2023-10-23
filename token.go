@@ -1,6 +1,7 @@
 package tokenizer
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 )
@@ -46,7 +47,7 @@ func (t *Token) ID() int {
 }
 
 // String returns a multiline string with the token's information.
-func (t Token) String() string {
+func (t *Token) String() string {
 	return fmt.Sprintf("{\n\tId: %d\n\tKey: %d\n\tValue: %s\n\tPosition: %d\n\tIndent: %d bytes\n\tLine: %d\n}",
 		t.id, t.key, t.value, t.offset, len(t.indent), t.line)
 }
@@ -57,32 +58,32 @@ func (t *Token) IsValid() bool {
 }
 
 // IsKeyword checks if this is keyword — the key is TokenKeyword.
-func (t Token) IsKeyword() bool {
+func (t *Token) IsKeyword() bool {
 	return t.key == TokenKeyword
 }
 
 // IsNumber checks if this token is integer or float — the key is TokenInteger or TokenFloat.
-func (t Token) IsNumber() bool {
+func (t *Token) IsNumber() bool {
 	return t.key == TokenInteger || t.key == TokenFloat
 }
 
 // IsFloat checks if this token is float — the key is TokenFloat.
-func (t Token) IsFloat() bool {
+func (t *Token) IsFloat() bool {
 	return t.key == TokenFloat
 }
 
 // IsInteger checks if this token is integer — the key is TokenInteger.
-func (t Token) IsInteger() bool {
+func (t *Token) IsInteger() bool {
 	return t.key == TokenInteger
 }
 
-// ValueInt returns value as int64.
+// ValueInt64 returns value as int64.
 // If the token is float the result wild be round by math's rules.
-// If the token is not TokenInteger or TokenFloat zero will be returned.
-// Method doesn't use cache. Each call starts a number parser.
-func (t Token) ValueInt() int64 {
+// If the token is not TokenInteger or TokenFloat then method returns zero
+// Method doesn't use cache — each call starts a number parser.
+func (t *Token) ValueInt64() int64 {
 	if t.key == TokenInteger {
-		num, _ := strconv.ParseInt(b2s(t.value), 10, 64)
+		num, _ := strconv.ParseInt(b2s(t.value), 0, 64)
 		return num
 	} else if t.key == TokenFloat {
 		num, _ := strconv.ParseFloat(b2s(t.value), 64)
@@ -91,18 +92,28 @@ func (t Token) ValueInt() int64 {
 	return 0
 }
 
-// ValueFloat returns value as float64.
-// If the token is not TokenInteger or TokenFloat zero will be returned.
-// Method doesn't use cache. Each call starts a number parser.
-func (t *Token) ValueFloat() float64 {
+// Deprecated: use ValueInt64
+func (t *Token) ValueInt() int64 {
+	return t.ValueInt64()
+}
+
+// ValueFloat64 returns value as float64.
+// If the token is not TokenInteger or TokenFloat then method returns zero.
+// Method doesn't use cache — each call starts a number parser.
+func (t *Token) ValueFloat64() float64 {
 	if t.key == TokenFloat {
 		num, _ := strconv.ParseFloat(b2s(t.value), 64)
 		return num
 	} else if t.key == TokenInteger {
-		num, _ := strconv.ParseInt(b2s(t.value), 10, 64)
+		num, _ := strconv.ParseInt(b2s(t.value), 0, 64)
 		return float64(num)
 	}
 	return 0.0
+}
+
+// Deprecated: use ValueFloat64
+func (t *Token) ValueFloat() float64 {
+	return t.ValueFloat64()
 }
 
 // Indent returns spaces before the token.
@@ -160,18 +171,22 @@ func (t *Token) StringKey() TokenKey {
 
 // IsString checks if current token is a quoted string.
 // Token key may be TokenString or TokenStringFragment.
-func (t Token) IsString() bool {
+func (t *Token) IsString() bool {
 	return t.key == TokenString || t.key == TokenStringFragment
 }
 
 // ValueUnescaped returns clear (unquoted) string
-//  - without edge-tokens (quotes)
-//  - with character escaping handling
+//   - without edge-tokens (quotes)
+//   - with character escaping handling
 //
 // For example quoted string
-//		"one \"two\"\t three"
+//
+//	"one \"two\"\t three"
+//
 // transforms to
-//		one "two"		three
+//
+//	one "two"		three
+//
 // Method doesn't use cache. Each call starts a string parser.
 func (t *Token) ValueUnescaped() []byte {
 	if t.string != nil {
@@ -184,23 +199,24 @@ func (t *Token) ValueUnescaped() []byte {
 			to = len(t.value) - len(t.string.EndToken)
 		}
 		str := t.value[from:to]
-		result := make([]byte, 0, len(str))
-		escaping := false
-		start := 0
-		for i := 0; i < len(str); i++ {
-			if escaping {
-				if v, ok := t.string.SpecSymbols[str[i]]; ok {
-					result = append(result, t.value[start:i]...)
-					result = append(result, v)
+		var result []byte
+		for len(str) > 0 {
+			if idx := bytes.IndexByte(str, t.string.EscapeSymbol); idx != -1 {
+				if p := hasAnyPrefix(t.string.SpecSymbols, str[idx+1:]); p != nil {
+					result = append(result, str[:idx]...)
+					result = append(result, p...)
+					str = str[idx+len(p)+1:]
 				}
-				start = i
-				escaping = false
-			} else if t.string.EscapeSymbol != 0 && str[i] == t.string.EscapeSymbol {
-				escaping = true
+			} else {
+				break
 			}
 		}
-		if start == 0 { // no one escapes
+		if result == nil {
 			return str
+		}
+
+		if len(str) > 0 {
+			result = append(result, str...)
 		}
 		return result
 	}
@@ -225,6 +241,24 @@ func (t *Token) Is(key TokenKey, keys ...TokenKey) bool {
 			if t.key == k {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+func hasAnyPrefix(prefixes [][]byte, where []byte) []byte {
+	for _, w := range prefixes {
+		if bytes.HasPrefix(where, w) {
+			return w
+		}
+	}
+	return nil
+}
+
+func runeExists(s []rune, v rune) bool {
+	for _, val := range s {
+		if val == v {
+			return true
 		}
 	}
 	return false

@@ -15,8 +15,9 @@ func TestStream(t *testing.T) {
 	openKey := TokenKey(12)
 	closeKey := TokenKey(13)
 	dquoteKey := TokenKey(14)
-	tokenizer.AllowKeywordUnderscore()
-	tokenizer.AllowNumbersInKeyword()
+	// tokenizer.AllowKeywordUnderscore()
+	// tokenizer.AllowNumbersInKeyword()
+	tokenizer.AllowKeywordSymbols(Underscore, Numbers)
 	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
 	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})
 	tokenizer.DefineTokens(openKey, []string{"{{"})
@@ -37,7 +38,7 @@ func TestStream(t *testing.T) {
 	require.False(t, stream.CurrentToken().IsNumber())
 	require.False(t, stream.CurrentToken().IsString())
 	require.Equal(t, []byte("field_a"), stream.CurrentToken().Value())
-	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
+	require.Equal(t, int64(0), stream.CurrentToken().ValueInt64())
 	require.Equal(t, "field_a", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, []byte(nil), stream.CurrentToken().Indent())
 	require.True(t, stream.IsNextSequence(condTokenKey, TokenInteger, TokenString, TokenFloat))
@@ -64,8 +65,8 @@ func TestStream(t *testing.T) {
 	require.True(t, stream.CurrentToken().IsValid())
 	require.Equal(t, condTokenKey, stream.CurrentToken().Key())
 	require.Equal(t, []byte(">"), stream.CurrentToken().Value())
-	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
-	require.Equal(t, float64(0.0), stream.CurrentToken().ValueFloat())
+	require.Equal(t, int64(0), stream.CurrentToken().ValueInt64())
+	require.Equal(t, float64(0.0), stream.CurrentToken().ValueFloat64())
 	require.Equal(t, ">", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, []byte(" "), stream.CurrentToken().Indent())
 
@@ -78,23 +79,23 @@ func TestStream(t *testing.T) {
 	require.True(t, stream.CurrentToken().IsInteger())
 	require.True(t, stream.CurrentToken().IsNumber())
 	require.False(t, stream.CurrentToken().IsString())
-	require.Equal(t, int64(10), stream.CurrentToken().ValueInt())
-	require.Equal(t, float64(10.0), stream.CurrentToken().ValueFloat())
+	require.Equal(t, int64(10), stream.CurrentToken().ValueInt64())
+	require.Equal(t, float64(10.0), stream.CurrentToken().ValueFloat64())
 	require.Equal(t, "10", stream.CurrentToken().ValueUnescapedString())
 
 	stream.GoNext()
 
 	require.Equal(t, TokenString, stream.CurrentToken().Key())
-	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
-	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat())
+	require.Equal(t, int64(0), stream.CurrentToken().ValueInt64())
+	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat64())
 	require.Equal(t, "value1", stream.CurrentToken().ValueUnescapedString())
 
 	stream.GoTo(7)
 
 	require.Equal(t, "value3", stream.CurrentToken().ValueUnescapedString())
 	require.Equal(t, TokenKeyword, stream.CurrentToken().Key())
-	require.Equal(t, int64(0), stream.CurrentToken().ValueInt())
-	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat())
+	require.Equal(t, int64(0), stream.CurrentToken().ValueInt64())
+	require.Equal(t, float64(0), stream.CurrentToken().ValueFloat64())
 
 	stream.Close()
 }
@@ -105,27 +106,27 @@ func TestHistory(t *testing.T) {
 	tokens.SetHistorySize(3)
 
 	require.Equal(t, 0, tokens.CurrentToken().ID())
-	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 0, tokens.HeadToken().ID())
-	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(0), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 10, tokens.len)
 
 	tokens.GoNext()
 	tokens.GoNext()
 
 	require.Equal(t, 2, tokens.CurrentToken().ID())
-	require.Equal(t, int64(2), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(2), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 0, tokens.HeadToken().ID())
-	require.Equal(t, int64(0), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(0), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 10, tokens.len)
 
 	tokens.GoNext()
 	tokens.GoNext()
 
 	require.Equal(t, 4, tokens.CurrentToken().ID())
-	require.Equal(t, int64(4), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(4), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 1, tokens.HeadToken().ID())
-	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(1), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 9, tokens.len)
 
 	tokens.GoPrev()
@@ -133,17 +134,17 @@ func TestHistory(t *testing.T) {
 	tokens.GoPrev()
 
 	require.Equal(t, 1, tokens.CurrentToken().ID())
-	require.Equal(t, int64(1), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(1), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 1, tokens.HeadToken().ID())
-	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(1), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 9, tokens.len)
 
 	tokens.GoPrev()
 
 	require.Equal(t, -1, tokens.CurrentToken().ID())
-	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt())
+	require.Equal(t, int64(0), tokens.CurrentToken().ValueInt64())
 	require.Equal(t, 1, tokens.HeadToken().ID())
-	require.Equal(t, int64(1), tokens.HeadToken().ValueInt())
+	require.Equal(t, int64(1), tokens.HeadToken().ValueInt64())
 	require.Equal(t, 9, tokens.len)
 }
 
@@ -201,7 +202,7 @@ func TestInfStream(t *testing.T) {
 		stream.GoNext()
 
 		require.True(t, stream.CurrentToken().Is(TokenInteger))
-		id := stream.CurrentToken().ValueInt()
+		id := stream.CurrentToken().ValueInt64()
 		stream.GoNext()
 
 		require.True(t, stream.CurrentToken().Is(commaKey))
@@ -312,4 +313,57 @@ func BenchmarkParseBytes(b *testing.B) {
 	dif := time.Since(t)
 	size := len(reader.data)
 	b.Logf("Speed: %d bytes string with %s: %d byte/sec", size, dif, int(float64(size)/dif.Seconds()))
+}
+
+func BenchmarkMap(b *testing.B) {
+	mp := map[byte]bool{
+		'0': true,
+		'1': true,
+		'2': true,
+		'3': true,
+		'4': true,
+		'5': true,
+		'6': true,
+		'7': true,
+		'8': true,
+		'9': true,
+	}
+
+	var x bool
+
+	for i := 0; i < b.N; i++ {
+		x = mp['9']
+	}
+
+	_ = x
+}
+
+func BenchmarkSlice(b *testing.B) {
+	s := []byte{
+		'0',
+		'1',
+		'2',
+		'3',
+		'4',
+		'5',
+		'6',
+		'7',
+		'8',
+		'9',
+		'A',
+		'B',
+		'C',
+		'D',
+		'E',
+		'F',
+	}
+
+	for i := 0; i < b.N; i++ {
+		for _, v := range s {
+			if v == 'F' {
+				break
+			}
+		}
+	}
+
 }

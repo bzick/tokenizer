@@ -215,8 +215,8 @@ func (s *Stream) IsAnyNextSequence(keys ...[]TokenKey) bool {
 	return result
 }
 
-// HeadToken returns pointer to head-token
-// Head-token may be changed if history size set.
+// HeadToken returns pointer to head-token.
+// Head-token may be changed by parser if history size is enabled.
 func (s *Stream) HeadToken() *Token {
 	return s.head
 }

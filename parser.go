@@ -200,7 +200,7 @@ func (p *parsing) parse() {
 		if p.curr == 0 {
 			break
 		}
-		if p.t.flags&fStopOnUnknown != 0 {
+		if p.t.stopOnUnknown {
 			break
 		}
 		p.token.key = TokenUnknown
@@ -253,10 +253,7 @@ func (p *parsing) parseKeyword() bool {
 		var size int
 		p.ensureBytes(4)
 		r, size = utf8.DecodeRune(p.slice(p.pos, p.pos+4))
-		if unicode.IsLetter(r) ||
-			(p.t.flags&fAllowKeywordUnderscore != 0 && p.curr == '_') ||
-			(p.t.flags&fAllowNumberInKeyword != 0 && start != -1 && isNumberByte(p.curr)) {
-
+		if unicode.IsLetter(r) || runeExists(p.t.kwMajorSymbols, r) || (start != -1 && runeExists(p.t.kwMinorSymbols, r)) {
 			if start == -1 {
 				start = p.pos
 			}
@@ -296,7 +293,7 @@ func (p *parsing) parseNumber() bool {
 					start = p.pos
 				}
 			}
-		} else if p.t.flags&fAllowNumberUnderscore != 0 && p.curr == '_' {
+		} else if p.t.allowNumberUnderscore && p.curr == '_' {
 			if stage != stageCoefficient {
 				break
 			}
