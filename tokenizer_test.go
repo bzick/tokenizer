@@ -68,11 +68,11 @@ func TestTokenize(t *testing.T) {
 	}
 
 	framed := []item{
-		// {"one", Token{key: TokenString, string: quote, value: []byte("\"one\"")}},
-		// {"one two", Token{key: TokenString, string: quote, value: []byte("\"one two\"")}},
-		// {"два три", Token{key: TokenString, string: quote, value: []byte("\"два три\"")}},
-		{"one\" two", Token{key: TokenString, string: quote, value: []byte("\"one\\\" two\"")}},
-		// {"", Token{key: TokenString, string: quote, value: []byte("\"\"")}},
+		{"one", Token{key: TokenString, string: quote, value: []byte("\"one\"")}},
+		{"one two", Token{key: TokenString, string: quote, value: []byte("\"one two\"")}},
+		{"два три", Token{key: TokenString, string: quote, value: []byte("\"два три\"")}},
+		{"one\" two", Token{key: TokenString, string: quote, value: []byte(`"one\" two"`)}},
+		{"", Token{key: TokenString, string: quote, value: []byte("\"\"")}},
 	}
 	for _, v := range framed {
 		stream := tokenizer.ParseBytes(v.token.value)

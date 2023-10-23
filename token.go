@@ -204,6 +204,7 @@ func (t *Token) ValueUnescaped() []byte {
 			if idx := bytes.IndexByte(str, t.string.EscapeSymbol); idx != -1 {
 				if p := hasAnyPrefix(t.string.SpecSymbols, str[idx+1:]); p != nil {
 					result = append(result, str[:idx]...)
+					result = append(result, p...)
 					str = str[idx+len(p)+1:]
 				}
 			} else {
