@@ -40,12 +40,15 @@ const BackSlash = '\\'
 var DefaultWhiteSpaces = []byte{' ', '\t', '\n', '\r'}
 
 // DefaultStringEscapes is default escaped symbols. Those symbols are often used everywhere.
-var DefaultStringEscapes = []byte{
-	'n',
-	'r',
-	't',
-	'\\',
+// Deprecated: use DefaultSpecialString and AddSpecialStrings
+var DefaultStringEscapes = map[byte]byte{
+	'n':  '\n',
+	'r':  '\r',
+	't':  '\t',
+	'\\': '\\',
 }
+
+// DefaultSpecialString is default escaped symbols.
 var DefaultSpecialString = []string{
 	"\\",
 	"n",
@@ -100,8 +103,10 @@ func (q *StringSettings) SetEscapeSymbol(symbol byte) *StringSettings {
 
 // SetSpecialSymbols set mapping of all escapable symbols for escape symbol, like \n, \t, \r.
 // Deprecated: use AddSpecialStrings
-func (q *StringSettings) SetSpecialSymbols(special []byte) *StringSettings {
-	q.SpecSymbols = append(q.SpecSymbols, special)
+func (q *StringSettings) SetSpecialSymbols(special map[byte]byte) *StringSettings {
+	for _, v := range special {
+		q.SpecSymbols = append(q.SpecSymbols, []byte{v})
+	}
 	return q
 }
 
