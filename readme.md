@@ -56,7 +56,7 @@ for stream.Valid() {
 		field := stream.NextToken().ValueString()
 		// ... 
 	}
-	stream.Next()
+	stream.GoNext()
 }
 ```
 
@@ -112,7 +112,7 @@ stream := parser.ParseStream(fp, 4096).SetHistorySize(10)
 defer stream.Close()
 for stream.IsValid() { 
 	// ...
-	stream.Next()
+	stream.GoNext()
 }
 ```
 
