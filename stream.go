@@ -139,12 +139,12 @@ func (s *Stream) GoPrev() *Stream {
 // The search is done by token ID.
 func (s *Stream) GoTo(id int) *Stream {
 	if s.current == undefToken {
-		if s.prev != nil && id <= s.prev.id { // we in the end
+		if s.prev != nil && id <= s.prev.id { // we at the end of the stream
 			s.GoPrev()
 			for s.current != nil && id != s.current.id {
 				s.GoPrev()
 			}
-		} else if s.next != nil && id >= s.prev.id { // we in the beginning
+		} else if s.next != nil && id >= s.prev.id { // we at the beginning of the stream
 			s.GoNext()
 			for s.current != nil && id != s.current.id {
 				s.GoNext()
