@@ -232,6 +232,17 @@ func TestInfStream(t *testing.T) {
 
 }
 
+func TestIssues13_SequenceLongerThenStream(t *testing.T) {
+	const TOK_CMD = 100
+	var parser = New()
+	parser.DefineTokens(TOK_CMD, []string{"CMD"})
+
+	stream := parser.ParseString("CMD CMD")
+
+	ok := stream.IsNextSequence(TOK_CMD, TOK_CMD, TOK_CMD, TOK_CMD)
+	require.False(t, ok)
+}
+
 var pattern = []byte(`<item count=10 valid id="n9762"> Носки <![CDATA[ socks ]]></item>`)
 
 type dataGenerator struct {

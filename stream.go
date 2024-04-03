@@ -138,6 +138,20 @@ func (s *Stream) GoPrev() *Stream {
 // GoTo moves pointer of stream to specific token.
 // The search is done by token ID.
 func (s *Stream) GoTo(id int) *Stream {
+	if s.current == undefToken {
+		if s.prev != nil && id <= s.prev.id { // we at the end of the stream
+			s.GoPrev() // now current is available
+			for s.current != nil && id != s.current.id {
+				s.GoPrev()
+			}
+		} else if s.next != nil && id >= s.prev.id { // we at the beginning of the stream
+			s.GoNext() // now current is available
+			for s.current != nil && id != s.current.id {
+				s.GoNext()
+			}
+		}
+		return s
+	}
 	if id > s.current.id {
 		for s.current != nil && id != s.current.id {
 			s.GoNext()
