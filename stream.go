@@ -140,12 +140,12 @@ func (s *Stream) GoPrev() *Stream {
 func (s *Stream) GoTo(id int) *Stream {
 	if s.current == undefToken {
 		if s.prev != nil && id <= s.prev.id { // we at the end of the stream
-			s.GoPrev()
+			s.GoPrev() // now current is available
 			for s.current != nil && id != s.current.id {
 				s.GoPrev()
 			}
 		} else if s.next != nil && id >= s.prev.id { // we at the beginning of the stream
-			s.GoNext()
+			s.GoNext() // now current is available
 			for s.current != nil && id != s.current.id {
 				s.GoNext()
 			}
