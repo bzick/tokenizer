@@ -6,21 +6,21 @@ import (
 )
 
 // Stream iterator via parsed tokens.
-// If data reads from an infinite buffer then the iterator will be read data from reader chunk-by-chunk.
+// If data reads from an infinite buffer, then the iterator will be read data from the reader chunk-by-chunk.
 type Stream struct {
 	t *Tokenizer
 	// count of tokens in the stream
 	len int
-	// pointer to the node of double-linked list of tokens
+	// pointer to the node of a token double-linked list
 	current *Token
-	// pointer of valid token if current moved to out of bounds (out of end list)
+	// pointer of valid token if current moved to out of bounds (out of end the list)
 	prev *Token
-	// pointer of valid token if current moved to out of bounds (out of begin list)
+	// pointer of valid token if current moved to out of bounds (out of begin the list)
 	next *Token
-	// pointer to head of list
+	// pointer to head of the list
 	head *Token
 
-	// last whitespaces before end of source
+	// last whitespaces before the end of a source
 	wsTail []byte
 	// count of parsed bytes
 	parsed int
@@ -92,7 +92,7 @@ func (s *Stream) GetParsedLength() int {
 	}
 }
 
-// GoNext moves stream pointer to the next token.
+// GoNext moves the stream pointer to the next token.
 // If there is no token, it initiates the parsing of the next chunk of data.
 // If there is no data, the pointer will point to the TokenUndef token.
 func (s *Stream) GoNext() *Stream {
@@ -119,7 +119,7 @@ func (s *Stream) GoNext() *Stream {
 	return s
 }
 
-// GoPrev moves pointer of stream to the next token.
+// GoPrev moves the pointer of stream to the next token.
 // The number of possible calls is limited if you specified SetHistorySize.
 // If the beginning of the stream or the end of the history is reached, the pointer will point to the TokenUndef token.
 func (s *Stream) GoPrev() *Stream {
@@ -135,8 +135,7 @@ func (s *Stream) GoPrev() *Stream {
 	return s
 }
 
-// GoTo moves pointer of stream to specific token.
-// The search is done by token ID.
+// GoTo moves the pointer of stream to specific token.
 func (s *Stream) GoTo(id int) *Stream {
 	if s.current == undefToken {
 		if s.prev != nil && id <= s.prev.id { // we at the end of the stream
@@ -229,22 +228,22 @@ func (s *Stream) IsAnyNextSequence(keys ...[]TokenKey) bool {
 	return result
 }
 
-// HeadToken returns pointer to head-token.
-// Head-token may be changed by parser if history size is enabled.
+// HeadToken returns the pointer to head-token.
+// Parser may change Head token if history size is enabled.
 func (s *Stream) HeadToken() *Token {
 	return s.head
 }
 
 // CurrentToken always returns the token.
-// If the pointer is not valid (see IsValid) CurrentToken will be returns TokenUndef token.
+// If the pointer is not valid (see IsValid), CurrentToken will be return TokenUndef token.
 // Do not save result (Token) into variables — current token may be changed at any time.
 func (s *Stream) CurrentToken() *Token {
 	return s.current
 }
 
 // PrevToken returns previous token from the stream.
-// If previous token doesn't exist method return TypeUndef token.
-// Do not save result (Token) into variables — previous token may be changed at any time.
+// If the previous token doesn't exist, the method returns TypeUndef token.
+// Do not save a result (Token) into variables — the previous token may be changed at any time.
 func (s *Stream) PrevToken() *Token {
 	if s.current.prev != nil {
 		return s.current.prev
@@ -253,8 +252,8 @@ func (s *Stream) PrevToken() *Token {
 }
 
 // NextToken returns next token from the stream.
-// If next token doesn't exist method return TypeUndef token.
-// Do not save result (Token) into variables — next token may be changed at any time.
+// If next token doesn't exist, the method returns TypeUndef token.
+// Do not save a result (Token) into variables — the next token may be changed at any time.
 func (s *Stream) NextToken() *Token {
 	if s.current.next != nil {
 		return s.current.next
@@ -262,8 +261,9 @@ func (s *Stream) NextToken() *Token {
 	return undefToken
 }
 
-// GoNextIfNextIs moves stream pointer to the next token if the next token has specific token keys.
-// If keys matched pointer will be updated and method returned true. Otherwise, returned false.
+// GoNextIfNextIs moves the stream pointer to the next token if the next token has specific token keys.
+// If keys matched pointer will be updated and the method returned true.
+// Otherwise, returned false.
 func (s *Stream) GoNextIfNextIs(key TokenKey, otherKeys ...TokenKey) bool {
 	if s.NextToken().Is(key, otherKeys...) {
 		s.GoNext()
@@ -329,8 +329,9 @@ func (s *Stream) GetSnippet(before, after int) []Token {
 }
 
 // GetSnippetAsString returns tokens before and after current token as string.
-// `maxStringLength` specify max length of each token string. Zero — unlimited token string length.
-// If string greater than maxLength method removes some runes in the middle of the string.
+// `maxStringLength` specifies max length of each token string.
+// Zero — unlimited token string length.
+// If string is greater than maxLength method removes some runes in the middle of the string.
 func (s *Stream) GetSnippetAsString(before, after, maxStringLength int) string {
 	segments := s.GetSnippet(before, after)
 	str := make([]string, len(segments))
