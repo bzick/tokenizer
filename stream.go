@@ -166,7 +166,7 @@ func (s *Stream) GoTo(id int) *Stream {
 // IsValid checks if stream is valid.
 // This means that the pointer has not reached the end of the stream.
 func (s *Stream) IsValid() bool {
-	return s.current != undefToken
+	return s.current != nil && s.current != undefToken
 }
 
 // IsNextSequence checks if these are next tokens in exactly the same sequence as specified.

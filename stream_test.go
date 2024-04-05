@@ -272,6 +272,20 @@ func TestIssue9(t *testing.T) {
 	}
 }
 
+func TestIssue7(t *testing.T) {
+	p := New()
+	buf := bytes.NewBuffer(nil)
+
+	stream := p.ParseStream(buf, 4096)
+	defer stream.Close()
+
+	for stream.IsValid() {
+		token := stream.CurrentToken()
+		require.False(t, token.Is(TokenInteger))
+		stream.GoNext()
+	}
+}
+
 var pattern = []byte(`<item count=10 valid id="n9762"> Носки <![CDATA[ socks ]]></item>`)
 
 type dataGenerator struct {
