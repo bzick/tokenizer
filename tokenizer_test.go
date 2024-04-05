@@ -21,66 +21,76 @@ func TestTokenize(t *testing.T) {
 	quote := tokenizer.DefineStringToken(dquoteKey, `"`, `"`).
 		SetEscapeSymbol('\\').
 		AddSpecialStrings([]string{`"`})
-	data := []item{
-		{"one", Token{key: TokenKeyword, value: []byte("one")}},
-		{"два", Token{key: TokenKeyword, value: []byte("one")}},
-		{">=", Token{key: condTokenKey, value: []byte(">=")}},
-		{"<", Token{key: condTokenKey, value: []byte("<")}},
-		{"=", Token{key: TokenUnknown, value: []byte("=")}},
-		{"or", Token{key: wordTokenKey, value: []byte("or")}},
-		{"или", Token{key: wordTokenKey, value: []byte("или")}},
-	}
 
-	for _, v := range data {
-		stream := tokenizer.ParseBytes(v.token.value)
-		require.Equal(t, v.token.Value(), stream.CurrentToken().Value())
-		require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
-		require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
-	}
+	t.Run("any", func(t *testing.T) {
+		data := []item{
+			{"one", Token{key: TokenKeyword, value: []byte("one")}},
+			{"два", Token{key: TokenKeyword, value: []byte("one")}},
+			{">=", Token{key: condTokenKey, value: []byte(">=")}},
+			{"<", Token{key: condTokenKey, value: []byte("<")}},
+			{"=", Token{key: TokenUnknown, value: []byte("=")}},
+			{"or", Token{key: wordTokenKey, value: []byte("or")}},
+			{"или", Token{key: wordTokenKey, value: []byte("или")}},
+		}
 
-	integers := []item{
-		{int64(1), Token{key: TokenInteger, value: []byte("1")}},
-		{int64(123456), Token{key: TokenInteger, value: []byte("123456")}},
-		{int64(123456), Token{key: TokenInteger, value: []byte("123_456")}},
-	}
-	for _, v := range integers {
-		stream := tokenizer.ParseBytes(v.token.value)
-		require.Equal(t, v.token.Value(), stream.CurrentToken().Value())
-		require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
-		require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
-		require.Equal(t, v.value, stream.CurrentToken().ValueInt64(), "value %s -> %d: %s", v.token.value, v.value, stream.CurrentToken().Value())
-	}
+		for _, v := range data {
+			stream := tokenizer.ParseBytes(v.token.value)
+			require.Equal(t, v.token.Value(), stream.CurrentToken().Value())
+			require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
+			require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
+		}
+	})
 
-	floats := []item{
-		{2.3, Token{key: TokenFloat, value: []byte("2.3")}},
-		{2.0, Token{key: TokenFloat, value: []byte("2.")}},
-		{2.3e4, Token{key: TokenFloat, value: []byte("2.3e4")}},
-		{2.3e-4, Token{key: TokenFloat, value: []byte("2.3e-4")}},
-		{2.3e+4, Token{key: TokenFloat, value: []byte("2.3E+4")}},
-		{2e4, Token{key: TokenFloat, value: []byte("2e4")}},
-	}
-	for _, v := range floats {
-		stream := tokenizer.ParseBytes(v.token.value)
-		require.Equal(t, v.token.Value(), stream.CurrentToken().Value())
-		require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
-		require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
-		require.Equal(t, v.value, stream.CurrentToken().ValueFloat64())
-	}
+	t.Run("integers", func(t *testing.T) {
+		integers := []item{
+			{int64(1), Token{key: TokenInteger, value: []byte("1")}},
+			{int64(123456), Token{key: TokenInteger, value: []byte("123456")}},
+			{int64(123456), Token{key: TokenInteger, value: []byte("123_456")}},
+		}
+		for _, v := range integers {
+			stream := tokenizer.ParseBytes(v.token.value)
+			require.Equal(t, v.token.Value(), stream.CurrentToken().Value())
+			require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
+			require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
+			require.Equal(t, v.value, stream.CurrentToken().ValueInt64(), "value %s -> %d: %s", v.token.value, v.value, stream.CurrentToken().Value())
+		}
+	})
 
-	framed := []item{
-		{"one", Token{key: TokenString, string: quote, value: []byte("\"one\"")}},
-		{"one two", Token{key: TokenString, string: quote, value: []byte("\"one two\"")}},
-		{"два три", Token{key: TokenString, string: quote, value: []byte("\"два три\"")}},
-		{"one\" two", Token{key: TokenString, string: quote, value: []byte(`"one\" two"`)}},
-		{"", Token{key: TokenString, string: quote, value: []byte("\"\"")}},
-	}
-	for _, v := range framed {
-		stream := tokenizer.ParseBytes(v.token.value)
-		require.Equal(t, v.token.Value(), stream.CurrentToken().Value())
-		require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
-		require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
-		require.Equal(t, v.value, stream.CurrentToken().ValueUnescapedString(), "value %s -> %s: %s", v.token.value, v.value, stream.CurrentToken().Value())
-	}
+	t.Run("floats", func(t *testing.T) {
+		floats := []item{
+			{2.3, Token{key: TokenFloat, value: []byte("2.3")}},
+			{2.0, Token{key: TokenFloat, value: []byte("2.")}},
+			{0.2, Token{key: TokenFloat, value: []byte(".2")}},
+			{2.3e4, Token{key: TokenFloat, value: []byte("2.3e4")}},
+			{2.3e-4, Token{key: TokenFloat, value: []byte("2.3e-4")}},
+			{2.3e+4, Token{key: TokenFloat, value: []byte("2.3E+4")}},
+			{2e4, Token{key: TokenFloat, value: []byte("2e4")}},
+		}
+		for _, v := range floats {
+			stream := tokenizer.ParseBytes(v.token.value)
+			require.Equal(t, v.token.Value(), stream.CurrentToken().Value())
+			require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
+			require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
+			require.Equal(t, v.value, stream.CurrentToken().ValueFloat64())
+		}
+	})
+
+	t.Run("framed", func(t *testing.T) {
+		framed := []item{
+			{"one", Token{key: TokenString, string: quote, value: []byte("\"one\"")}},
+			{"one two", Token{key: TokenString, string: quote, value: []byte("\"one two\"")}},
+			{"два три", Token{key: TokenString, string: quote, value: []byte("\"два три\"")}},
+			{"one\" two", Token{key: TokenString, string: quote, value: []byte(`"one\" two"`)}},
+			{"", Token{key: TokenString, string: quote, value: []byte("\"\"")}},
+		}
+		for _, v := range framed {
+			stream := tokenizer.ParseBytes(v.token.value)
+			require.Equal(t, v.token.Value(), stream.CurrentToken().Value())
+			require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
+			require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
+			require.Equal(t, v.value, stream.CurrentToken().ValueUnescapedString(), "value %s -> %s: %s", v.token.value, v.value, stream.CurrentToken().Value())
+		}
+	})
 }
 
 func TestTokenizeEdgeCases(t *testing.T) {
@@ -90,45 +100,68 @@ func TestTokenizeEdgeCases(t *testing.T) {
 	}
 	tokenizer := New()
 
-	data1 := []item{
-		{"one1", []Token{
-			{key: TokenKeyword, value: s2b("one"), offset: 0, line: 1, id: 0},
-			{key: TokenInteger, value: s2b("1"), offset: 3, line: 1, id: 1},
-		}},
-		{"one_two", []Token{
-			{key: TokenKeyword, value: s2b("one"), offset: 0, line: 1, id: 0},
-			{key: TokenUnknown, value: s2b("_"), offset: 3, line: 1, id: 1},
-			{key: TokenKeyword, value: s2b("two"), offset: 4, line: 1, id: 2},
-		}},
-		{"one_1", []Token{
-			{key: TokenKeyword, value: s2b("one"), offset: 0, line: 1, id: 0},
-			{key: TokenUnknown, value: s2b("_"), offset: 3, line: 1, id: 1},
-			{key: TokenInteger, value: s2b("1"), offset: 4, line: 1, id: 2},
-		}},
-	}
-	data2 := []item{
-		{"one1", []Token{
-			{key: TokenKeyword, value: s2b("one1"), offset: 0, line: 1, id: 0},
-		}},
-		{"one_two", []Token{
-			{key: TokenKeyword, value: s2b("one_two"), offset: 0, line: 1, id: 0},
-		}},
-		{"one_1", []Token{
-			{key: TokenKeyword, value: s2b("one_1"), offset: 0, line: 1, id: 0},
-		}},
-	}
+	t.Run("cases1", func(t *testing.T) {
+		data1 := []item{
+			{"one1", []Token{
+				{key: TokenKeyword, value: s2b("one"), offset: 0, line: 1, id: 0},
+				{key: TokenInteger, value: s2b("1"), offset: 3, line: 1, id: 1},
+			}},
+			{"one_two", []Token{
+				{key: TokenKeyword, value: s2b("one"), offset: 0, line: 1, id: 0},
+				{key: TokenUnknown, value: s2b("_"), offset: 3, line: 1, id: 1},
+				{key: TokenKeyword, value: s2b("two"), offset: 4, line: 1, id: 2},
+			}},
+			{"one_1", []Token{
+				{key: TokenKeyword, value: s2b("one"), offset: 0, line: 1, id: 0},
+				{key: TokenUnknown, value: s2b("_"), offset: 3, line: 1, id: 1},
+				{key: TokenInteger, value: s2b("1"), offset: 4, line: 1, id: 2},
+			}},
+			{"1..2", []Token{
+				{key: TokenInteger, value: s2b("1"), offset: 0, line: 1, id: 0},
+				{key: TokenUnknown, value: s2b("."), offset: 1, line: 1, id: 1},
+				{key: TokenFloat, value: s2b(".2"), offset: 2, line: 1, id: 2},
+			}},
+			{"1ee2", []Token{
+				{key: TokenInteger, value: s2b("1"), offset: 0, line: 1, id: 0},
+				{key: TokenKeyword, value: s2b("ee"), offset: 1, line: 1, id: 1},
+				{key: TokenInteger, value: s2b("2"), offset: 3, line: 1, id: 2},
+			}},
+			{"1e-s", []Token{
+				{key: TokenInteger, value: s2b("1"), offset: 0, line: 1, id: 0},
+				{key: TokenKeyword, value: s2b("e"), offset: 1, line: 1, id: 1},
+				{key: TokenUnknown, value: s2b("-"), offset: 2, line: 1, id: 2},
+				{key: TokenKeyword, value: s2b("s"), offset: 3, line: 1, id: 3},
+			}},
+			{".1.2", []Token{
+				{key: TokenFloat, value: s2b(".1"), offset: 0, line: 1, id: 0},
+				{key: TokenFloat, value: s2b(".2"), offset: 2, line: 1, id: 1},
+			}},
+		}
+		for _, v := range data1 {
+			stream := tokenizer.ParseString(v.str)
+			require.Equalf(t, v.tokens, stream.GetSnippet(10, 10), "parse data1 %s: %s", v.str, stream)
+		}
+	})
+	t.Run("case2", func(t *testing.T) {
+		data2 := []item{
+			{"one1", []Token{
+				{key: TokenKeyword, value: s2b("one1"), offset: 0, line: 1, id: 0},
+			}},
+			{"one_two", []Token{
+				{key: TokenKeyword, value: s2b("one_two"), offset: 0, line: 1, id: 0},
+			}},
+			{"one_1", []Token{
+				{key: TokenKeyword, value: s2b("one_1"), offset: 0, line: 1, id: 0},
+			}},
+		}
 
-	for _, v := range data1 {
-		stream := tokenizer.ParseString(v.str)
-		require.Equalf(t, v.tokens, stream.GetSnippet(10, 10), "parse data1 %s: %s", v.str, stream)
-	}
+		tokenizer.AllowKeywordSymbols(Underscore, Numbers)
 
-	tokenizer.AllowKeywordSymbols(Underscore, Numbers)
-
-	for _, v := range data2 {
-		stream := tokenizer.ParseBytes([]byte(v.str))
-		require.Equalf(t, v.tokens, stream.GetSnippet(10, 10), "parse data2 %s: %s", v.str, stream)
-	}
+		for _, v := range data2 {
+			stream := tokenizer.ParseBytes([]byte(v.str))
+			require.Equalf(t, v.tokens, stream.GetSnippet(10, 10), "parse data2 %s: %s", v.str, stream)
+		}
+	})
 }
 
 func TestTokenizeComplex(t *testing.T) {

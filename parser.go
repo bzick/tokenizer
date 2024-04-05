@@ -273,66 +273,68 @@ func (p *parsing) parseKeyword() bool {
 	return false
 }
 
-const (
-	stageCoefficient = iota + 1
-	stageMantissa
-	stagePower
-)
-
 func (p *parsing) parseNumber() bool {
 	var start = -1
-	var needNumber = true
+	var end = -1
+	var floatTraitPos = -1
+	var hasPoint = false
+	var hasNumber = false
+	var hasExp = false
 
-	var stage uint8 = 0
 	for p.curr != 0 {
 		if isNumberByte(p.curr) {
-			needNumber = false
 			if start == -1 {
-				if stage == 0 {
-					stage = stageCoefficient
-					start = p.pos
-				}
+				start = p.pos
 			}
-		} else if p.t.allowNumberUnderscore && p.curr == '_' {
-			if stage != stageCoefficient {
-				break
-			}
-			// todo checks double underscore
-		} else if !needNumber && p.curr == '.' {
-			if stage != stageCoefficient {
-				break
-			}
-			stage = stageMantissa
-			needNumber = true
-		} else if !needNumber && (p.curr == 'e' || p.curr == 'E') {
-			if stage != stageMantissa && stage != stageCoefficient {
-				break
-			}
-			ePowSign := false
-			switch p.nextByte() {
-			case '-', '+':
-				ePowSign = true
-				p.next()
-			}
-			needNumber = true
-			if isNumberByte(p.nextByte()) {
-				stage = stagePower
-			} else {
-				if ePowSign { // rollback sign position
-					p.prev()
-				}
-				break
-			}
+			end = p.pos
+			hasNumber = true
 		} else {
-			break
+			nextByte := p.nextByte()
+			if p.curr == '_' {
+				if !hasNumber || (!p.t.allowNumberUnderscore || !isNumberByte(nextByte)) {
+					break
+				}
+			} else if p.curr == '.' {
+				if hasPoint {
+					break
+				} else if isNumberByte(nextByte) {
+					if start == -1 { // floats can be started from a pointer
+						start = p.pos
+					}
+				} else if !(nextByte == 'e' || nextByte == 'E' || nextByte == 0) {
+					break
+				}
+				floatTraitPos = p.pos
+				end = p.pos
+				hasPoint = true
+			} else if p.curr == 'e' || p.curr == 'E' {
+				if !hasNumber && !(isNumberByte(nextByte) || nextByte == '-') || hasExp {
+					break
+				}
+				floatTraitPos = p.pos
+				hasExp = true
+				hasPoint = true
+			} else if hasExp && (p.curr == '-' || p.curr == '+') {
+				if isNumberByte(nextByte) {
+					if start == -1 { // numbers can be started from a sign
+						start = p.pos
+					}
+				} else {
+					break
+				}
+			} else {
+				break
+			}
 		}
 		p.next()
 	}
-	if stage == 0 {
+	if start == -1 {
 		return false
 	}
-	p.token.value = p.str[start:p.pos]
-	if stage == stageCoefficient {
+	end = end + 1
+	p.pos = end
+	p.token.value = p.str[start:end]
+	if floatTraitPos == -1 || floatTraitPos > end-1 {
 		p.token.key = TokenInteger
 		p.token.offset = p.offset + start
 	} else {
@@ -343,7 +345,7 @@ func (p *parsing) parseNumber() bool {
 	return true
 }
 
-// match compare next bytes from data with `r`
+// match compares next bytes from data with `r`
 func (p *parsing) match(r []byte, seek bool) bool {
 	if r[0] == p.curr {
 		if len(r) > 1 {
