@@ -59,13 +59,6 @@ func newInfParser(t *Tokenizer, reader io.Reader, bufferSize uint) *parsing {
 	}
 }
 
-func (p *parsing) prev() {
-	if p.pos > 0 {
-		p.pos--
-		p.curr = p.str[p.pos]
-	}
-}
-
 func (p *parsing) ensureBytes(n int) bool {
 	if p.pos+n >= len(p.str) {
 		if p.reader != nil {
