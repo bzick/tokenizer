@@ -20,7 +20,7 @@ Main features:
 * Autodetect white space symbols.
 * Parse any data syntax (xml, [json](https://github.com/bzick/tokenizer/blob/master/example_test.go), yaml), any programming language.
 * Single pass through the data.
-* Parses [infinite incoming data](#parse-buffer) and don't panic.
+* Parses infinite incoming data and don't panic.
 
 Use cases:
 - Parsing html, xml, [json](./example_test.go), yaml and other text formats.
@@ -46,7 +46,7 @@ parser.DefineTokens(TDot, []string{"."})
 parser.DefineTokens(TMath, []string{"+", "-", "/", "*", "%"})
 parser.DefineStringToken(`"`, `"`).SetEscapeSymbol(tokenizer.BackSlash)
 
-// create tokens stream
+// create tokens' stream
 stream := parser.ParseString(`user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34`)
 defer stream.Close()
 
@@ -96,7 +96,7 @@ parser.AllowKeywordUnderscore() // ... and other configuration code
 
 ```
 
-There is two ways to **parse string or slice**:
+There are two ways to **parse string or slice**:
 
 - `parser.ParseString(str)`
 - `parser.ParseBytes(slice)`
@@ -192,8 +192,8 @@ stream: [
 
 Keyword may be modified with `tokenizer.AllowKeywordSymbols(majorSymbols, minorSymbols)`
 
-- Major symbols (any quantity in the keyword) can be at the beginning, in the middle and in the end of the keyword.
-- Minor symbols (any quantity in the keyword) can be in the middle and in the end of the keyword.
+- Major symbols (any quantity in the keyword) can be in the beginning, in the middle and at the end of the keyword.
+- Minor symbols (any quantity in the keyword) can be in the middle and at the end of the keyword.
 
 ```go
 parser.AllowKeywordSymbols(tokenizer.Underscore, tokenizer.Numbers)
@@ -260,7 +260,7 @@ fmt.Print("Token is %d", stream.CurrentToken().GetFloat())  // Token is 130
 ### Framed string
 
 Strings that are framed with tokens are called framed strings. An obvious example is quoted a string like `"one two"`.
-There quotes — edge tokens.
+There are quotes — edge tokens.
 
 You can create and customize framed string through `tokenizer.DefineStringToken()`:
 

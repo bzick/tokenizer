@@ -14,23 +14,23 @@ type TokenKey int
 const (
 	// TokenUnknown means that this token not embedded token and not user defined.
 	TokenUnknown TokenKey = -6
-	// TokenStringFragment means that this is only fragment of quoted string with injections
+	// TokenStringFragment means that this is only fragment of the quoted string with injections.
 	// For example, "one {{ two }} three", where "one " and " three" — TokenStringFragment
 	TokenStringFragment TokenKey = -5
-	// TokenString means than this token is quoted string.
+	// TokenString means that this token is quoted string.
 	// For example, "one two"
 	TokenString TokenKey = -4
-	// TokenFloat means that this token is float number with point and/or exponent.
+	// TokenFloat means that this token is a float number with point and/or exponent.
 	// For example, 1.2, 1e6, 1E-6
 	TokenFloat TokenKey = -3
-	// TokenInteger means that this token is integer number.
+	// TokenInteger means that this token is an integer number.
 	// For example, 3, 49983
 	TokenInteger TokenKey = -2
 	// TokenKeyword means that this token is word.
 	// For example, one, two, три
 	TokenKeyword TokenKey = -1
 	// TokenUndef means that token doesn't exist.
-	// Then stream out of range of token list any getter or checker will return TokenUndef token.
+	// Then stream out of range of a token list any getter or checker will return TokenUndef token.
 	TokenUndef TokenKey = 0
 )
 
@@ -87,7 +87,7 @@ type StringSettings struct {
 
 // AddInjection configure injection in to string.
 // Injection - parsable fragment of framed(quoted) string.
-// Often used for parsing of placeholders or template's expressions in the framed string.
+// Often used for parsing of placeholders or template expressions in the framed string.
 func (q *StringSettings) AddInjection(startTokenKey, endTokenKey TokenKey) *StringSettings {
 	q.Injects = append(q.Injects, QuoteInjectSettings{StartKey: startTokenKey, EndKey: endTokenKey})
 	return q
@@ -95,7 +95,7 @@ func (q *StringSettings) AddInjection(startTokenKey, endTokenKey TokenKey) *Stri
 
 // SetEscapeSymbol set escape symbol for framed(quoted) string.
 // Escape symbol allows ignoring close token of framed string.
-// Also escape symbol allows using special symbols in the frame strings, like \n, \t.
+// Also, escape symbol allows using special symbols in the frame strings, like \n, \t.
 func (q *StringSettings) SetEscapeSymbol(symbol byte) *StringSettings {
 	q.EscapeSymbol = symbol
 	return q
@@ -110,7 +110,7 @@ func (q *StringSettings) SetSpecialSymbols(special map[byte]byte) *StringSetting
 	return q
 }
 
-// AddSpecialStrings set mapping of all escapable string for escape symbol, like \n, \t, \r.
+// AddSpecialStrings set mapping of all escapable strings for escape symbol, like \n, \t, \r.
 func (q *StringSettings) AddSpecialStrings(special []string) *StringSettings {
 	for _, s := range special {
 		q.SpecSymbols = append(q.SpecSymbols, []byte(s))
@@ -118,7 +118,7 @@ func (q *StringSettings) AddSpecialStrings(special []string) *StringSettings {
 	return q
 }
 
-// Tokenizer stores all tokens configuration and behaviors.
+// Tokenizer stores all token configuration and behaviors.
 type Tokenizer struct {
 	stopOnUnknown         bool
 	allowNumberUnderscore bool
@@ -199,7 +199,7 @@ func (t *Tokenizer) AllowNumberUnderscore() *Tokenizer {
 }
 
 // DefineTokens add custom token.
-// There `key` unique is identifier of `tokens`, `tokens` — slice of string of tokens.
+// The `key` is the identifier of `tokens`, `tokens` — slice of tokens as string.
 // If a key already exists, tokens will be rewritten.
 func (t *Tokenizer) DefineTokens(key TokenKey, tokens []string) *Tokenizer {
 	var tks []*tokenRef
@@ -227,7 +227,7 @@ func (t *Tokenizer) DefineTokens(key TokenKey, tokens []string) *Tokenizer {
 }
 
 // DefineStringToken defines a token string.
-// For example, a piece of data surrounded by quotes: "string in quotes" or 'string on sigle quotes'.
+// For example, a piece of data surrounded by quotes: "string in quotes" or 'string on single quotes'.
 // Arguments startToken and endToken defines open and close "quotes".
 //
 //   - `t.DefineStringToken("`", "`")` - parse string "one `two three`" will be parsed as
