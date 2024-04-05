@@ -199,11 +199,11 @@ func (p *parsing) parse() {
 		p.token.key = TokenUnknown
 		p.token.value = p.str[p.pos : p.pos+1]
 		p.token.offset = p.offset + p.pos
-		p.next()
 		p.emmitToken()
 		if p.curr == 0 {
 			break
 		}
+		p.next()
 	}
 	if len(p.token.indent) > 0 {
 		p.tail = p.token.indent
