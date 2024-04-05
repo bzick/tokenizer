@@ -116,7 +116,7 @@ func TestTokenizeEdgeCases(t *testing.T) {
 				{key: TokenUnknown, value: s2b("_"), offset: 3, line: 1, id: 1},
 				{key: TokenInteger, value: s2b("1"), offset: 4, line: 1, id: 2},
 			}},
-			{"1..2", []Token{
+			{"1..2", []Token{ // https://github.com/bzick/tokenizer/issues/11
 				{key: TokenInteger, value: s2b("1"), offset: 0, line: 1, id: 0},
 				{key: TokenUnknown, value: s2b("."), offset: 1, line: 1, id: 1},
 				{key: TokenFloat, value: s2b(".2"), offset: 2, line: 1, id: 2},
@@ -135,6 +135,10 @@ func TestTokenizeEdgeCases(t *testing.T) {
 			{".1.2", []Token{
 				{key: TokenFloat, value: s2b(".1"), offset: 0, line: 1, id: 0},
 				{key: TokenFloat, value: s2b(".2"), offset: 2, line: 1, id: 1},
+			}},
+			{"a]", []Token{ // https://github.com/bzick/tokenizer/issues/9
+				{key: TokenKeyword, value: s2b("a"), offset: 0, line: 1, id: 0},
+				{key: TokenUnknown, value: s2b("]"), offset: 1, line: 1, id: 1},
 			}},
 		}
 		for _, v := range data1 {

@@ -256,6 +256,22 @@ func TestIssue11(t *testing.T) {
 	require.Equal(t, "2", string(stream.CurrentToken().Value()))
 }
 
+func TestIssue9(t *testing.T) {
+	parser := New()
+	buf := bytes.NewBuffer([]byte("a]"))
+
+	stream := parser.ParseStream(buf, 4096)
+	defer stream.Close()
+	stream.CurrentToken()
+	for stream.IsValid() {
+		switch stream.CurrentToken().Key() {
+		default:
+			// println(stream.CurrentToken().ValueString())
+			stream.GoNext()
+		}
+	}
+}
+
 var pattern = []byte(`<item count=10 valid id="n9762"> Носки <![CDATA[ socks ]]></item>`)
 
 type dataGenerator struct {
