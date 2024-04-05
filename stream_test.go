@@ -243,6 +243,19 @@ func TestIssues13_SequenceLongerThenStream(t *testing.T) {
 	require.False(t, ok)
 }
 
+func TestIssue11(t *testing.T) {
+	parser := New()
+	parser.AllowKeywordSymbols(nil, Numbers)
+	parser.DefineTokens(1, []string{".."})
+
+	stream := parser.ParseString("1..2")
+	require.Equal(t, "1", string(stream.CurrentToken().Value()))
+	stream.GoNext()
+	require.Equal(t, "..", string(stream.CurrentToken().Value()))
+	stream.GoNext()
+	require.Equal(t, "2", string(stream.CurrentToken().Value()))
+}
+
 var pattern = []byte(`<item count=10 valid id="n9762"> Носки <![CDATA[ socks ]]></item>`)
 
 type dataGenerator struct {

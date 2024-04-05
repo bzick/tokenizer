@@ -155,8 +155,8 @@ func (t *Tokenizer) SetWhiteSpaces(ws []byte) *Tokenizer {
 }
 
 // AllowKeywordSymbols sets major and minor symbols for keywords.
-// Major symbols (any quantity) might be in begin, in middle and in the end of keyword.
-// Minor symbols (any quantity) might be in middle and in the end of the keyword.
+// Major symbols (any quantity) might be in the beginning, at the middle and at the end of keyword.
+// Minor symbols (any quantity) might be at the middle and at the end of the keyword.
 //
 //	parser.AllowKeywordSymbols(tokenizer.Underscore, tokenizer.Numbers)
 //	// allows: "_one23", "__one2__two3"
@@ -200,7 +200,7 @@ func (t *Tokenizer) AllowNumberUnderscore() *Tokenizer {
 
 // DefineTokens add custom token.
 // There `key` unique is identifier of `tokens`, `tokens` — slice of string of tokens.
-// If key already exists tokens will be rewritten.
+// If a key already exists, tokens will be rewritten.
 func (t *Tokenizer) DefineTokens(key TokenKey, tokens []string) *Tokenizer {
 	var tks []*tokenRef
 	if key < 1 {
