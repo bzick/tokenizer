@@ -174,20 +174,20 @@ func (s *Stream) IsNextSequence(keys ...TokenKey) bool {
 	var (
 		result = true
 		hSize  = 0
-		id     = s.CurrentToken().ID()
 	)
 	if s.historySize > 0 && s.historySize < len(keys) {
 		hSize = s.historySize
 		s.historySize = len(keys)
 	}
 
+	start := s.current
 	for _, key := range keys {
 		if !s.GoNext().CurrentToken().Is(key) {
 			result = false
 			break
 		}
 	}
-	s.GoTo(id)
+	s.current = start
 
 	if hSize != 0 {
 		s.SetHistorySize(hSize)
@@ -200,13 +200,13 @@ func (s *Stream) IsAnyNextSequence(keys ...[]TokenKey) bool {
 	var (
 		result = true
 		hSize  = 0
-		id     = s.CurrentToken().ID()
 	)
 	if s.historySize > 0 && s.historySize < len(keys) {
 		hSize = s.historySize
 		s.historySize = len(keys)
 	}
 
+	start := s.current
 	for _, key := range keys {
 		found := false
 		for _, k := range key {
@@ -220,7 +220,7 @@ func (s *Stream) IsAnyNextSequence(keys ...[]TokenKey) bool {
 			break
 		}
 	}
-	s.GoTo(id)
+	s.current = start
 
 	if hSize != 0 {
 		s.SetHistorySize(hSize)

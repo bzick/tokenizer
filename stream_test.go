@@ -3,9 +3,10 @@ package tokenizer
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestStream(t *testing.T) {
@@ -270,6 +271,17 @@ func TestIssue9(t *testing.T) {
 			stream.GoNext()
 		}
 	}
+}
+
+func TestStreamOverflow(t *testing.T) {
+	parser := New()
+	buf := bytes.NewBuffer([]byte("a b c"))
+
+	stream := parser.ParseStream(buf, 4096)
+	defer stream.Close()
+
+	require.False(t, stream.IsNextSequence(TokenKeyword, TokenKeyword, TokenKeyword, TokenKeyword))
+	require.False(t, stream.IsNextSequence(TokenKeyword, TokenKeyword, TokenKeyword, TokenKeyword))
 }
 
 func TestIssue7(t *testing.T) {
