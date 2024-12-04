@@ -150,7 +150,7 @@ func (p *parsing) checkPoint() bool {
 
 // parse bytes (p.str) to tokens and append them to the end if stream of tokens.
 func (p *parsing) parse() {
-	if len(p.str) == 0 {
+	if len(p.str) == p.pos {
 		if p.reader == nil || p.loadChunk() == 0 { // if it's not an infinite stream, or this is the end of the stream
 			return
 		}
