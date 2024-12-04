@@ -273,6 +273,19 @@ func TestIssue9(t *testing.T) {
 	}
 }
 
+// TestIssue26 panic when stream with more than one token ends with any white space
+func TestIssue26(t *testing.T) {
+	parser := New()
+	buf := bytes.NewBufferString("test coucou\n")
+
+	stream := parser.ParseStream(buf, 4096)
+	defer stream.Close()
+	for stream.IsValid() {
+		// do something...
+		stream.GoNext() // Should not panic
+	}
+}
+
 func TestStreamOverflow(t *testing.T) {
 	parser := New()
 	buf := bytes.NewBuffer([]byte("a b c"))
