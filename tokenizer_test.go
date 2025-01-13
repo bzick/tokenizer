@@ -67,11 +67,13 @@ func TestTokenize(t *testing.T) {
 			{2e4, Token{key: TokenFloat, value: []byte("2e4")}},
 		}
 		for _, v := range floats {
-			stream := tokenizer.ParseBytes(v.token.value)
-			require.Equal(t, v.token.Value(), stream.CurrentToken().Value())
-			require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
-			require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
-			require.Equal(t, v.value, stream.CurrentToken().ValueFloat64())
+			t.Run(string(v.token.value), func(t *testing.T) {
+				stream := tokenizer.ParseBytes(v.token.value)
+				require.Equalf(t, v.token.Value(), stream.CurrentToken().Value(), "check %s", v.token.value)
+				require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
+				require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
+				require.Equal(t, v.value, stream.CurrentToken().ValueFloat64())
+			})
 		}
 	})
 
@@ -144,11 +146,16 @@ func TestTokenizeEdgeCases(t *testing.T) {
 				{key: TokenInteger, value: s2b("0"), offset: 0, line: 1, id: 0},
 				{key: TokenKeyword, value: s2b("E"), offset: 1, line: 1, id: 1},
 			}},
+			{"0E+", []Token{ // https://github.com/bzick/tokenizer/issues/28
+				{key: TokenInteger, value: s2b("0"), offset: 0, line: 1, id: 0},
+				{key: TokenKeyword, value: s2b("E"), offset: 1, line: 1, id: 1},
+				{key: TokenUnknown, value: s2b("+"), offset: 2, line: 1, id: 2},
+			}},
 		}
 		for _, v := range data1 {
 			t.Run(v.str, func(t *testing.T) {
 				stream := tokenizer.ParseString(v.str)
-				require.Samef(t, v.tokens, stream.GetSnippet(10, 10), "parse data1 %s: %s", v.str, stream)
+				require.Equalf(t, v.tokens, stream.GetSnippet(10, 10), "parse data1 %s: %s", v.str, stream)
 			})
 		}
 	})
