@@ -301,7 +301,7 @@ func (p *parsing) parseNumber() bool {
 				end = p.pos
 				hasPoint = true
 			} else if p.curr == 'e' || p.curr == 'E' {
-				if !hasNumber && !(isNumberByte(nextByte) || nextByte == '-') || hasExp {
+				if !hasNumber || !(isNumberByte(nextByte) || nextByte == '-') || hasExp {
 					break
 				}
 				floatTraitPos = p.pos
