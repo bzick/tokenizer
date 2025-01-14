@@ -40,6 +40,7 @@ const BackSlash = '\\'
 var DefaultWhiteSpaces = []byte{' ', '\t', '\n', '\r'}
 
 // DefaultStringEscapes is default escaped symbols. Those symbols are often used everywhere.
+//
 // Deprecated: use DefaultSpecialString and AddSpecialStrings
 var DefaultStringEscapes = map[byte]byte{
 	'n':  '\n',
@@ -102,6 +103,7 @@ func (q *StringSettings) SetEscapeSymbol(symbol byte) *StringSettings {
 }
 
 // SetSpecialSymbols set mapping of all escapable symbols for escape symbol, like \n, \t, \r.
+//
 // Deprecated: use AddSpecialStrings
 func (q *StringSettings) SetSpecialSymbols(special map[byte]byte) *StringSettings {
 	for _, v := range special {
@@ -171,6 +173,7 @@ func (t *Tokenizer) AllowKeywordSymbols(majorSymbols []rune, minorSymbols []rune
 }
 
 // AllowKeywordUnderscore allows underscore symbol in keywords, like `one_two` or `_three`
+//
 // Deprecated: use AllowKeywordSymbols
 func (t *Tokenizer) AllowKeywordUnderscore() *Tokenizer {
 	t.kwMajorSymbols = append(t.kwMajorSymbols, '_')
@@ -180,6 +183,7 @@ func (t *Tokenizer) AllowKeywordUnderscore() *Tokenizer {
 // AllowNumbersInKeyword allows numbers in keywords, like `one1` or `r2d2`
 // The method allows numbers in keywords, but the keyword itself must not start with a number.
 // There should be no spaces between letters and numbers.
+//
 // Deprecated: use AllowKeywordSymbols
 func (t *Tokenizer) AllowNumbersInKeyword() *Tokenizer {
 	t.kwMinorSymbols = append(t.kwMinorSymbols, Numbers...)
@@ -230,10 +234,10 @@ func (t *Tokenizer) DefineTokens(key TokenKey, tokens []string) *Tokenizer {
 // For example, a piece of data surrounded by quotes: "string in quotes" or 'string on single quotes'.
 // Arguments startToken and endToken defines open and close "quotes".
 //
-//   - `t.DefineStringToken("`", "`")` - parse string "one `two three`" will be parsed as
+//   - `t.DefineStringToken(10, "`", "`")` - parse string "one `two three`" will be parsed as
 //     [{key: TokenKeyword, value: "one"}, {key: TokenString, value: "`two three`"}]
 //
-//   - `t.DefineStringToken("//", "\n")` - parse string "parse // like comment\n" will be parsed as
+//   - `t.DefineStringToken(11, "//", "\n")` - parse string "parse // like comment\n" will be parsed as
 //     [{key: TokenKeyword, value: "parse"}, {key: TokenString, value: "// like comment"}]
 func (t *Tokenizer) DefineStringToken(key TokenKey, startToken, endToken string) *StringSettings {
 	q := &StringSettings{
