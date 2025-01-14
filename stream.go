@@ -29,12 +29,19 @@ type Stream struct {
 	historySize int
 }
 
-// NewStream creates new parsed stream of tokens.
+func validateToken(t *Token) *Token {
+	if t != nil {
+		return t
+	}
+	return undefToken
+}
+
+// NewStream creates a new parsed stream of tokens.
 func NewStream(p *parsing) *Stream {
 	return &Stream{
 		t:       p.t,
-		head:    p.head,
-		current: p.head,
+		head:    validateToken(p.head),
+		current: validateToken(p.head),
 		len:     p.n,
 		wsTail:  p.tail,
 		parsed:  p.parsed + p.pos,
@@ -47,8 +54,8 @@ func NewInfStream(p *parsing) *Stream {
 		t:       p.t,
 		p:       p,
 		len:     p.n,
-		head:    p.head,
-		current: p.head,
+		head:    validateToken(p.head),
+		current: validateToken(p.head),
 	}
 }
 
@@ -289,6 +296,9 @@ func (s *Stream) GetSnippet(before, after int) []Token {
 		after = s.len - before - 1
 	}
 	segment = make([]Token, before+after+1)
+	if len(segment) == 0 {
+		return segment
+	}
 	var ptr *Token
 	if s.next != nil {
 		ptr = s.next

@@ -1,7 +1,9 @@
 package tokenizer
 
 import (
+	"bytes"
 	"github.com/stretchr/testify/require"
+	"strings"
 	"testing"
 )
 
@@ -150,6 +152,8 @@ func TestTokenizeEdgeCases(t *testing.T) {
 				{key: TokenInteger, value: s2b("0"), offset: 0, line: 1, id: 0},
 				{key: TokenKeyword, value: s2b("E"), offset: 1, line: 1, id: 1},
 				{key: TokenUnknown, value: s2b("+"), offset: 2, line: 1, id: 2},
+			}},
+			{"\x00", []Token{ // https://github.com/bzick/tokenizer/issues/28
 			}},
 		}
 		for _, v := range data1 {
@@ -346,4 +350,59 @@ func TestTokenizeInject(t *testing.T) {
 			line:   1,
 		},
 	}, stream.GetSnippet(10, 10), "parsed %s as %s", str, stream)
+}
+
+func FuzzStream(f *testing.F) {
+	testcases := []string{
+		`{id: 1, key: "object number 1", value: 1.2E3}`,
+		"hello\n  \n\tworld",
+		"test\x00",
+		"\x00",
+	}
+
+	for _, tc := range testcases {
+		f.Add(tc) // Use f.Add to provide a seed corpus
+	}
+	f.Fuzz(func(t *testing.T, orig string) {
+
+		nullIndex := strings.IndexRune(orig, '\x00')
+		if nullIndex != -1 && nullIndex != len(orig)-1 {
+			t.Skipf("Skipping input with data after null byte")
+		}
+
+		origBytes := []byte(orig)
+		buffer := bytes.NewBuffer(origBytes)
+		tokenizer := New()
+		commaKey := TokenKey(10)
+		colonKey := TokenKey(11)
+		openKey := TokenKey(12)
+		closeKey := TokenKey(13)
+		dquoteKey := TokenKey(14)
+		tokenizer.DefineTokens(commaKey, []string{","})
+		tokenizer.DefineTokens(colonKey, []string{":"})
+		tokenizer.DefineTokens(openKey, []string{"{"})
+		tokenizer.DefineTokens(closeKey, []string{"}"})
+		tokenizer.DefineStringToken(dquoteKey, `"`, `"`).SetEscapeSymbol('\\')
+
+		stream := tokenizer.ParseStream(buffer, 100)
+		var actual []byte
+		for stream.IsValid() {
+			current := stream.CurrentToken()
+			// t.Logf("%#v", current)
+			actual = append(actual, current.Indent()...)
+			actual = append(actual, current.Value()...)
+			stream.GoNext()
+		}
+		// t.Logf("%#v", stream.CurrentToken())
+
+		// As we only concatenate the indents of each token, the trailing
+		// whitespaces and token separators are lost, so we trim these
+		// characters on the right of both actual and expected slices.
+		trimset := ". \t\r\n\x00"
+		expected := bytes.TrimRight(origBytes, trimset)
+		actual = bytes.TrimRight(actual, trimset)
+		if !bytes.Equal(expected, actual) {
+			t.Errorf("input:\n%q\nexpected:\n%q\nactual:\n%q", orig, expected, actual)
+		}
+	})
 }

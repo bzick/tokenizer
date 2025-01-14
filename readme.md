@@ -376,7 +376,7 @@ stream := parser.ParseString(`{"key": [1]}`)
 
 ## Known issues
 
-* zero-byte `\0` ignores in the source string.
+* zero-byte `\x00` (`\0`) stops parsing.
 
 ## Benchmark
 
