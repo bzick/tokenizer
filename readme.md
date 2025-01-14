@@ -32,11 +32,14 @@ Use cases:
 For example, parsing SQL `WHERE` condition `user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34`:
 
 ```go
+import "github.com/bzick/tokenizer"
+
 // define custom tokens keys
-const ( 
-	TEquality = 1
-	TDot      = 2
-	TMath     = 3
+const (
+	TEquality = iota + 1
+	TDot
+	TMath
+	TDoubleQuoted
 )
 
 // configure tokenizer
@@ -44,17 +47,18 @@ parser := tokenizer.New()
 parser.DefineTokens(TEquality, []string{"<", "<=", "==", ">=", ">", "!="})
 parser.DefineTokens(TDot, []string{"."})
 parser.DefineTokens(TMath, []string{"+", "-", "/", "*", "%"})
-parser.DefineStringToken(`"`, `"`).SetEscapeSymbol(tokenizer.BackSlash)
+parser.DefineStringToken(TDoubleQuoted, `"`, `"`).SetEscapeSymbol(tokenizer.BackSlash)
+parser.AllowKeywordSymbols(tokenizer.Underscore, tokenizer.Numbers)
 
 // create tokens' stream
 stream := parser.ParseString(`user_id = 119 and modified > "2020-01-01 00:00:00" or amount >= 122.34`)
 defer stream.Close()
 
 // iterate over each token
-for stream.Valid() {
+for stream.IsValid() {
 	if stream.CurrentToken().Is(tokenizer.TokenKeyword) {
-		field := stream.NextToken().ValueString()
-		// ... 
+		field := stream.CurrentToken().ValueString()
+		// ...
 	}
 	stream.GoNext()
 }
@@ -68,7 +72,7 @@ tokens: |user_id| =| 119| and| modified| >| "2020-01-01 00:00:00"| or| amount| >
 
 0:  {key: TokenKeyword, value: "user_id"}                token.Value()          == "user_id"
 1:  {key: TEquality, value: "="}                         token.Value()          == "="
-2:  {key: TokenInteger, value: "119"}                    token.ValueInt()       == 119
+2:  {key: TokenInteger, value: "119"}                    token.ValueInt64()     == 119
 3:  {key: TokenKeyword, value: "and"}                    token.Value()          == "and"
 4:  {key: TokenKeyword, value: "modified"}               token.Value()          == "modified"
 5:  {key: TEquality, value: ">"}                         token.Value()          == ">"
@@ -76,7 +80,7 @@ tokens: |user_id| =| 119| and| modified| >| "2020-01-01 00:00:00"| or| amount| >
 7:  {key: TokenKeyword, value: "or"}                     token.Value()          == "and"
 8:  {key: TokenKeyword, value: "amount"}                 token.Value()          == "amount"
 9:  {key: TEquality, value: ">="}                        token.Value()          == ">="
-10: {key: TokenFloat, value: "122.34"}                   token.ValueFloat()     == 122.34
+10: {key: TokenFloat, value: "122.34"}                   token.ValueFloat64()   == 122.34
 ```
 
 More examples:
@@ -87,12 +91,11 @@ More examples:
 ### Create and parse
 
 ```go
-import (
-    "github.com/bzick/tokenizer"
-)
+import "github.com/bzick/tokenizer"
 
 var parser := tokenizer.New()
-parser.AllowKeywordUnderscore() // ... and other configuration code
+parser.AllowKeywordSymbols(tokenizer.Underscore, []rune{})
+// ... and other configuration code
 
 ```
 
@@ -110,7 +113,7 @@ fp, err := os.Open("data.json") // huge JSON file
 
 stream := parser.ParseStream(fp, 4096).SetHistorySize(10)
 defer stream.Close()
-for stream.IsValid() { 
+for stream.IsValid() {
 	// ...
 	stream.GoNext()
 }
@@ -118,12 +121,12 @@ for stream.IsValid() {
 
 ## Embedded tokens
 
-- `tokenizer.TokenUnknown` — unspecified token key. 
+- `tokenizer.TokenUnknown` — unspecified token key.
 - `tokenizer.TokenKeyword` — keyword, any combination of letters, including unicode letters.
 - `tokenizer.TokenInteger` — integer value
 - `tokenizer.TokenFloat` — float/double value
 - `tokenizer.TokenString` — quoted string
-- `tokenizer.TokenStringFragment` — fragment framed (quoted) string 
+- `tokenizer.TokenStringFragment` — fragment framed (quoted) string
 
 ### Unknown token
 
@@ -132,6 +135,7 @@ A token marks as `tokenizer.TokenUnknown` if the parser detects an unknown token
 ```go
 stream := parser.ParseString(`one!`)
 ```
+
 ```
 stream: [
     {
@@ -151,6 +155,7 @@ Setting `tokenizer.StopOnUndefinedToken()` stops parser  when `tokenizer.TokenUn
 ```go
 stream := parser.ParseString(`one!`)
 ```
+
 ```
 stream: [
     {
@@ -168,11 +173,12 @@ and the length of the original string.
 
 Any word that is not a custom token is stored in a single token as `tokenizer.TokenKeyword`.
 
-The word can contain unicode characters, numbers (see `tokenizer.AllowNumbersInKeyword()`) and underscore (see `tokenizer.AllowKeywordUnderscore ()`).
+The word can contain unicode characters, and it can be configured to contain other characters, like numbers and underscores (see `tokenizer.AllowKeywordSymbols()`).
 
 ```go
 stream := parser.ParseString(`one 二 три`)
 ```
+
 ```
 stream: [
     {
@@ -210,6 +216,7 @@ Any integer is stored as one token with key `tokenizer.TokenInteger`.
 ```go
 stream := parser.ParseString(`223 999`)
 ```
+
 ```
 stream: [
     {
@@ -223,11 +230,11 @@ stream: [
 ]
 ```
 
-To get int64 from the token value use `stream.GetInt()`:
+To get int64 from the token value use `stream.GetInt64()`:
 
 ```go
 stream := tokenizer.ParseString("123")
-fmt.Print("Token is %d", stream.CurrentToken().GetInt())  // Token is 123
+fmt.Print("Token is %d", stream.CurrentToken().GetInt64())  // Token is 123
 ```
 
 ### Float number
@@ -241,6 +248,7 @@ Any float number is stored as one token with key `tokenizer.TokenFloat`. Float n
 ```go
 stream := parser.ParseString(`1.3e-8`):
 ```
+
 ```
 stream: [
     {
@@ -250,11 +258,11 @@ stream: [
 ]
 ```
 
-To get float64 from the token value use `token.GetFloat()`:
+To get float64 from the token value use `token.GetFloat64()`:
 
 ```go
 stream := parser.ParseString("1.3e2")
-fmt.Print("Token is %d", stream.CurrentToken().GetFloat())  // Token is 130
+fmt.Print("Token is %d", stream.CurrentToken().GetFloat64())  // Token is 130
 ```
 
 ### Framed string
@@ -271,6 +279,7 @@ parser.DefineStringToken(TokenDoubleQuotedString, `"`, `"`).SetEscapeSymbol('\\'
 // ...
 stream := parser.ParseString(`"two \"three"`)
 ```
+
 ```
 stream: [
     {
@@ -280,10 +289,10 @@ stream: [
 ]
 ```
 
-To get a framed string without edge tokens and special characters, use the `stream.ValueUnescape()` method:
+To get a framed string without edge tokens and special characters, use the `stream.ValueUnescaped()` method:
 
 ```go
-value := stream.CurrentToken().ValueUnescape() // result: two "three
+value := stream.CurrentToken().ValueUnescaped() // result: two "three
 ```
 
 The method `token.StringKey()` will be return token string key defined in the `DefineStringToken`:
@@ -313,7 +322,9 @@ parser.DefineStringToken(TokenQuotedString, `"`, `"`).AddInjection(TokenOpenInje
 
 parser.ParseString(`"one {{ two }} three"`)
 ```
+
 Tokens:
+
 ```
 {
     {
