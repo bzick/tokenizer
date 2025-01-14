@@ -67,7 +67,7 @@ func (s *Stream) SetHistorySize(size int) *Stream {
 
 // Close releases all token objects to pool
 func (s *Stream) Close() {
-	for ptr := s.head; ptr != nil; {
+	for ptr := s.head; ptr != nil && ptr != undefToken; {
 		p := ptr.next
 		s.t.freeToken(ptr)
 		ptr = p
