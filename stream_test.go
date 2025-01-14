@@ -286,6 +286,29 @@ func TestIssue26(t *testing.T) {
 	}
 }
 
+// TestIssue30 second use of ParseStream() after a first closed empty stream,
+// produces an incorrectly invalid stream.
+func TestIssue30(t *testing.T) {
+	parser := New()
+
+	// first stream is empty
+	buf1 := bytes.NewBufferString("")
+	stream1 := parser.ParseStream(buf1, 4096)
+	for stream1.IsValid() {
+		t.Error("stream1 should have been invalid from the beginning")
+	}
+	// closing the first stream before opening the new one
+	stream1.Close()
+
+	// second stream created from the same parser
+	buf2 := bytes.NewBufferString("hello world")
+	stream2 := parser.ParseStream(buf2, 4096)
+	defer stream2.Close()
+	if !stream2.IsValid() {
+		t.Fatal("stream2 should be valid")
+	}
+}
+
 func TestStreamOverflow(t *testing.T) {
 	parser := New()
 	buf := bytes.NewBuffer([]byte("a b c"))
