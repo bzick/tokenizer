@@ -1,3 +1,7 @@
+// Package tokenizer provides a high performance generic tokenizer (lexer)
+// that can parse any string, slice or infinite buffer to any tokens.
+// It is highly customizable and can be used, for example, by higher level
+// parsers for writing DSLs.
 package tokenizer
 
 import (
