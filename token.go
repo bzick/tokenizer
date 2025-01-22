@@ -206,6 +206,8 @@ func (t *Token) ValueUnescaped() []byte {
 					result = append(result, str[:idx]...)
 					result = append(result, p...)
 					str = str[idx+len(p)+1:]
+				} else {
+					break
 				}
 			} else {
 				break
