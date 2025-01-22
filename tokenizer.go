@@ -129,13 +129,14 @@ type Tokenizer struct {
 	stopOnUnknown         bool
 	allowNumberUnderscore bool
 	// all defined custom tokens {key: [token1, token2, ...], ...}
-	tokens         map[TokenKey][]*tokenRef
-	index          map[byte][]*tokenRef
-	quotes         []*StringSettings
-	wSpaces        []byte
-	kwMajorSymbols []rune
-	kwMinorSymbols []rune
-	pool           sync.Pool
+	tokens             map[TokenKey][]*tokenRef
+	index              map[byte][]*tokenRef
+	quotes             []*StringSettings
+	wSpaces            []byte
+	kwMajorSymbols     []rune
+	kwMinorSymbols     []rune
+	kwDiacriticMarkers bool
+	pool               sync.Pool
 }
 
 // New creates new tokenizer.
@@ -173,6 +174,13 @@ func (t *Tokenizer) SetWhiteSpaces(ws []byte) *Tokenizer {
 func (t *Tokenizer) AllowKeywordSymbols(majorSymbols []rune, minorSymbols []rune) *Tokenizer {
 	t.kwMajorSymbols = majorSymbols
 	t.kwMinorSymbols = minorSymbols
+	return t
+}
+
+// AllowKeywordDiacriticMarkers enables the support for diacritic markers in keywords:
+// See https://en.wikipedia.org/wiki/Diacritic
+func (t *Tokenizer) AllowKeywordDiacriticMarkers() *Tokenizer {
+	t.kwDiacriticMarkers = true
 	return t
 }
 
