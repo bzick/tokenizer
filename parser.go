@@ -246,7 +246,11 @@ func (p *parsing) parseKeyword() bool {
 		var size int
 		p.ensureBytes(4)
 		r, size = utf8.DecodeRune(p.slice(p.pos, p.pos+4))
-		if unicode.IsLetter(r) || runeExists(p.t.kwMajorSymbols, r) || (start != -1 && runeExists(p.t.kwMinorSymbols, r)) {
+		if unicode.IsLetter(r) ||
+			(p.t.kwDiacriticMarkers && unicode.IsMark(r)) ||
+			runeExists(p.t.kwMajorSymbols, r) ||
+			(start != -1 && runeExists(p.t.kwMinorSymbols, r)) {
+
 			if start == -1 {
 				start = p.pos
 			}

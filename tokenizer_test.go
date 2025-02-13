@@ -12,6 +12,10 @@ func TestTokenize(t *testing.T) {
 		value interface{}
 		token Token
 	}
+	type items struct {
+		value  string
+		tokens []Token
+	}
 	tokenizer := New()
 	condTokenKey := TokenKey(10)
 	wordTokenKey := TokenKey(11)
@@ -94,6 +98,43 @@ func TestTokenize(t *testing.T) {
 			require.Equal(t, v.token.Key(), stream.CurrentToken().Key())
 			require.Equal(t, v.token.StringSettings(), stream.CurrentToken().StringSettings())
 			require.Equal(t, v.value, stream.CurrentToken().ValueUnescapedString(), "value %s -> %s: %s", v.token.value, v.value, stream.CurrentToken().Value())
+		}
+	})
+
+	t.Run("diacritic", func(t *testing.T) {
+		diacritic := []items{
+			{"Pes pije čaj", []Token{
+				{key: TokenKeyword, value: []byte("Pes")},
+				{key: TokenKeyword, value: []byte("pije")},
+				{key: TokenKeyword, value: []byte("čaj")},
+			}},
+			{"L’élève visite Paris", []Token{
+				{key: TokenKeyword, value: []byte("L’élève")},
+				{key: TokenKeyword, value: []byte("visite")},
+				{key: TokenKeyword, value: []byte("Paris")},
+			}},
+			{"Dieses Haus ist schön", []Token{
+				{key: TokenKeyword, value: []byte("Dieses")},
+				{key: TokenKeyword, value: []byte("Haus")},
+				{key: TokenKeyword, value: []byte("ist")},
+				{key: TokenKeyword, value: []byte("schön")},
+			}},
+			{"Ёж оди́н дома", []Token{
+				{key: TokenKeyword, value: []byte("Ёж")},
+				{key: TokenKeyword, value: []byte("оди́н")},
+				{key: TokenKeyword, value: []byte("дома")},
+			}},
+			{"जब मैंने सुबह", []Token{
+				{key: TokenKeyword, value: []byte("जब")},
+				{key: TokenKeyword, value: []byte("मैंने")},
+				{key: TokenKeyword, value: []byte("सुबह")},
+			}},
+		}
+		for _, v := range diacritic {
+			t.Run(v.value, func(t *testing.T) {
+				stream := tokenizer.ParseBytes([]byte(v.value))
+				require.Equal(t, v.tokens, stream.GetSnippet(0, 1))
+			})
 		}
 	})
 }
