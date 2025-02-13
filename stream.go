@@ -259,7 +259,7 @@ func (s *Stream) PrevToken() *Token {
 }
 
 // NextToken returns next token from the stream.
-// If next token doesn't exist, the method returns TypeUndef token.
+// If a next token doesn't exist, the method returns TypeUndef token.
 // Do not save a result (Token) into variables — the next token may be changed at any time.
 func (s *Stream) NextToken() *Token {
 	if s.current.next != nil {
@@ -269,8 +269,7 @@ func (s *Stream) NextToken() *Token {
 }
 
 // GoNextIfNextIs moves the stream pointer to the next token if the next token has specific token keys.
-// If keys matched pointer will be updated and the method returned true.
-// Otherwise, returned false.
+// If a key matched pointer is updated and the method returns true. Otherwise, returns false.
 func (s *Stream) GoNextIfNextIs(key TokenKey, otherKeys ...TokenKey) bool {
 	if s.NextToken().Is(key, otherKeys...) {
 		s.GoNext()
@@ -280,68 +279,71 @@ func (s *Stream) GoNextIfNextIs(key TokenKey, otherKeys ...TokenKey) bool {
 }
 
 // GetSnippet returns slice of tokens.
-// Slice generated from current token position and include tokens before and after current token.
+// Slice generated from a current token position and include a number of tokens before and after the current token.
 func (s *Stream) GetSnippet(before, after int) []Token {
-	var segment []Token
-	if s.current == undefToken {
-		if s.prev != nil && before > s.prev.id-s.head.id {
-			before = s.prev.id - s.head.id
-		} else {
-			before = 0
-		}
-	} else if before > s.current.id-s.head.id {
-		before = s.current.id - s.head.id
+	if s.current == nil {
+		return nil
 	}
-	if after > s.len-before-1 {
-		after = s.len - before - 1
+	snippet := make([]Token, before+after+1)
+	start := 0
+	end := before + after
+	snippet[before] = Token{
+		id:     s.current.id,
+		key:    s.current.key,
+		value:  s.current.value,
+		line:   s.current.line,
+		offset: s.current.offset,
+		indent: s.current.indent,
+		string: s.current.string,
 	}
-	segment = make([]Token, before+after+1)
-	if len(segment) == 0 {
-		return segment
-	}
-	var ptr *Token
-	if s.next != nil {
-		ptr = s.next
-	} else if s.prev != nil {
-		ptr = s.prev
-	} else {
-		ptr = s.current
-	}
-	for p := ptr; p != nil; p, before = ptr.prev, before-1 {
-		segment[before] = Token{
-			id:     ptr.id,
-			key:    ptr.key,
-			value:  ptr.value,
-			line:   ptr.line,
-			offset: ptr.offset,
-			indent: ptr.indent,
-			string: ptr.string,
-		}
-		if before <= 0 {
-			break
+	if s.current.prev != nil && before > 0 {
+		ptr := s.current.prev
+		for i := 1; i <= before; i++ {
+			snippet[before-i] = Token{
+				id:     ptr.id,
+				key:    ptr.key,
+				value:  ptr.value,
+				line:   ptr.line,
+				offset: ptr.offset,
+				indent: ptr.indent,
+				string: ptr.string,
+			}
+			ptr = ptr.prev
+			if ptr == nil {
+				start = before - i
+				break
+			}
 		}
 	}
-	for p, i := ptr.next, 1; p != nil; p, i = p.next, i+1 {
-		segment[before+i] = Token{
-			id:     p.id,
-			key:    p.key,
-			value:  p.value,
-			line:   p.line,
-			offset: p.offset,
-			indent: p.indent,
-			string: p.string,
-		}
-		if i >= after {
-			break
+	if s.current.next != nil && after > 0 {
+		ptr := s.current.next
+		for i := 1; i <= after; i++ {
+			snippet[before+i] = Token{ // before - is offset
+				id:     ptr.id,
+				key:    ptr.key,
+				value:  ptr.value,
+				line:   ptr.line,
+				offset: ptr.offset,
+				indent: ptr.indent,
+				string: ptr.string,
+			}
+			ptr = ptr.next
+			if ptr == nil {
+				end = -i
+				break
+			}
 		}
 	}
-	return segment
+	if start == 0 && end == before+after {
+		return snippet
+	}
+	return snippet[start:end]
 }
 
-// GetSnippetAsString returns tokens before and after current token as string.
+// GetSnippetAsString returns tokens before and after a current token as string.
 // `maxStringLength` specifies max length of each token string.
 // Zero — unlimited token string length.
-// If string is greater than maxLength method removes some runes in the middle of the string.
+// If a string is greater than maxLength method removes some runes in the middle of the string.
 func (s *Stream) GetSnippetAsString(before, after, maxStringLength int) string {
 	segments := s.GetSnippet(before, after)
 	str := make([]string, len(segments))

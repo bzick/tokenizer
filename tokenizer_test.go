@@ -124,11 +124,16 @@ func TestTokenize(t *testing.T) {
 				{key: TokenKeyword, value: []byte("оди́н")},
 				{key: TokenKeyword, value: []byte("дома")},
 			}},
+			{"जब मैंने सुबह", []Token{
+				{key: TokenKeyword, value: []byte("जब")},
+				{key: TokenKeyword, value: []byte("मैंने")},
+				{key: TokenKeyword, value: []byte("सुबह")},
+			}},
 		}
 		for _, v := range diacritic {
 			t.Run(v.value, func(t *testing.T) {
 				stream := tokenizer.ParseBytes([]byte(v.value))
-				require.Equal(t, v.tokens, stream.GetSnippet(0, 0))
+				require.Equal(t, v.tokens, stream.GetSnippet(0, 1))
 			})
 		}
 	})
