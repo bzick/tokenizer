@@ -338,6 +338,51 @@ func (p *parsing) parseNumber() bool {
 	return true
 }
 
+// ignore case equals a and b
+func ignoreCaseEquals(a byte, b byte) bool {
+	return upperCaseAlphabet(a) == upperCaseAlphabet(b)
+}
+
+func upperCaseAlphabet(c byte) byte {
+	if c >= 'a' && c <= 'z' {
+		c -= 32
+	}
+	return c
+}
+
+func isAlphabet(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+// ignore case match compares next bytes from data with `r`
+//
+// copy match method add ignore case logic
+func (p *parsing) ignoreCaseMatch(r []byte, seek bool) bool {
+	if ignoreCaseEquals(r[0], p.curr) {
+		if len(r) > 1 {
+			if p.ensureBytes(len(r) - 1) {
+				var i = 1
+				for ; i < len(r); i++ {
+					if !ignoreCaseEquals(r[i], p.str[p.pos+i]) {
+						return false
+					}
+				}
+				if seek {
+					p.pos += i - 1
+					p.next()
+				}
+				return true
+			}
+			return false
+		}
+		if seek {
+			p.next()
+		}
+		return true
+	}
+	return false
+}
+
 // match compares next bytes from data with `r`
 func (p *parsing) match(r []byte, seek bool) bool {
 	if r[0] == p.curr {
@@ -432,16 +477,41 @@ func (p *parsing) parseQuote() bool {
 func (p *parsing) parseToken() bool {
 	if p.curr != 0 {
 		toks := p.t.index[p.curr]
+		if isAlphabet(p.curr) {
+			upCaseByte := upperCaseAlphabet(p.curr)
+			c := p.t.icIndex[upCaseByte]
+			toks = append(toks, c...)
+		}
+		// toks := p.t.index[p.curr]
 		if toks != nil {
 			start := p.pos
 			for _, t := range toks {
-				if p.match(t.Token, true) {
+
+				var matchFn func(r []byte, seek bool) bool
+				if t.IgnoreCase {
+					matchFn = p.ignoreCaseMatch
+				} else {
+					matchFn = p.match
+				}
+
+				if matchFn(t.Token, true) {
+					// alone split patch
+					if t.Alone && len(p.str) > start+len(t.Token) {
+						nt := p.str[start+len(t.Token)]
+						if nt >= '0' && nt <= '9' || nt >= 'a' && nt <= 'z' || nt >= 'A' && nt <= 'Z' || nt == '_' {
+							// rollback pos
+							p.pos = p.pos - (len(t.Token))
+							p.curr = p.str[p.pos]
+							continue
+						}
+					}
 					p.token.key = t.Key
 					p.token.offset = p.offset + start
 					p.token.value = t.Token
 					p.emmitToken()
 					return true
 				}
+
 			}
 		}
 	}

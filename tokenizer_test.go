@@ -2,10 +2,33 @@ package tokenizer
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
+
+func TestTokenizeParse(t *testing.T) {
+	THello := TokenKey(100)
+	TWorld := TokenKey(101)
+	TRoleKey := TokenKey(105)
+	TAndKey := TokenKey(106)
+
+	tokenizer := New()
+	// ignore case
+	tokenizer.DefineTokens(THello, []string{"hello"}, IgnoreCaseTokenOption)
+	tokenizer.DefineTokens(TRoleKey, []string{"Role"}, AloneTokenOption)
+	tokenizer.DefineTokens(TWorld, []string{"world"}, IgnoreCaseTokenOption, AloneTokenOption)
+	tokenizer.DefineTokens(TAndKey, []string{"and"})
+	input := "HeLLoWoRlD can match,prefixWorld role and roles both not match,but Role and WorLd is match will"
+	stream := tokenizer.ParseString(input)
+	for stream.IsValid() {
+		token := stream.CurrentToken()
+		t.Logf("[%d:%d] %s %v", token.Line(), token.Offset(), token.ValueString(), token.Key())
+		stream.GoNext()
+	}
+
+}
 
 func TestTokenize(t *testing.T) {
 	type item struct {
@@ -17,6 +40,7 @@ func TestTokenize(t *testing.T) {
 	wordTokenKey := TokenKey(11)
 	dquoteKey := TokenKey(14)
 	tokenizer.AllowNumberUnderscore()
+
 	tokenizer.DefineTokens(condTokenKey, []string{">=", "<=", "==", ">", "<"})
 	tokenizer.DefineTokens(wordTokenKey, []string{"or", "или"})
 	tokenizer.SetWhiteSpaces([]byte{' ', '\t', '\n'})
