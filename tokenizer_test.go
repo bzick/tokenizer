@@ -46,6 +46,7 @@ func TestTokenize(t *testing.T) {
 	t.Run("integers", func(t *testing.T) {
 		integers := []item{
 			{int64(1), Token{key: TokenInteger, value: []byte("1")}},
+			{int64(-1), Token{key: TokenInteger, value: []byte("-1")}},
 			{int64(123456), Token{key: TokenInteger, value: []byte("123456")}},
 			{int64(123456), Token{key: TokenInteger, value: []byte("123_456")}},
 		}
@@ -63,10 +64,12 @@ func TestTokenize(t *testing.T) {
 			{2.3, Token{key: TokenFloat, value: []byte("2.3")}},
 			{2.0, Token{key: TokenFloat, value: []byte("2.")}},
 			{0.2, Token{key: TokenFloat, value: []byte(".2")}},
+			{-2.3, Token{key: TokenFloat, value: []byte("-2.3")}},
 			{2.3e4, Token{key: TokenFloat, value: []byte("2.3e4")}},
 			{2.3e-4, Token{key: TokenFloat, value: []byte("2.3e-4")}},
 			{2.3e+4, Token{key: TokenFloat, value: []byte("2.3E+4")}},
 			{2e4, Token{key: TokenFloat, value: []byte("2e4")}},
+			{-1e1, Token{key: TokenFloat, value: []byte("-1e1")}},
 		}
 		for _, v := range floats {
 			t.Run(string(v.token.value), func(t *testing.T) {

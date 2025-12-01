@@ -315,6 +315,16 @@ func (p *parsing) parseNumber() bool {
 				} else {
 					break
 				}
+			} else if !hasExp && p.curr == '-' { // Allow starting numbers from a negative sign.
+				if isNumberByte(nextByte) {
+					if start == -1 {
+						start = p.pos
+					} else {
+						break
+					}
+				} else {
+					break
+				}
 			} else {
 				break
 			}
