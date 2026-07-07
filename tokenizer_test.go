@@ -389,14 +389,14 @@ func FuzzStream(f *testing.F) {
 
 		stream := tokenizer.ParseStream(buffer, 100)
 		var actual []byte
+		var tokens []*Token
 		for stream.IsValid() {
 			current := stream.CurrentToken()
-			// t.Logf("%#v", current)
+			tokens = append(tokens, current)
 			actual = append(actual, current.Indent()...)
 			actual = append(actual, current.Value()...)
 			stream.GoNext()
 		}
-		// t.Logf("%#v", stream.CurrentToken())
 
 		// As we only concatenate the indents of each token, the trailing
 		// whitespaces and token separators are lost, so we trim these
@@ -405,6 +405,7 @@ func FuzzStream(f *testing.F) {
 		expected := bytes.TrimRight(origBytes, trimset)
 		actual = bytes.TrimRight(actual, trimset)
 		if !bytes.Equal(expected, actual) {
+			t.Log(tokens)
 			t.Errorf("input:\n%q\nexpected:\n%q\nactual:\n%q", orig, expected, actual)
 		}
 	})
