@@ -103,13 +103,14 @@ func (s *Stream) GetParsedLength() int {
 // If there is no token, it initiates the parsing of the next chunk of data.
 // If there is no data, the pointer will point to the TokenUndef token.
 func (s *Stream) GoNext() *Stream {
+	// The next token might not have been parsed yet, try to do it now.
+	if s.current.next == nil && s.p != nil {
+		n := s.p.n
+		s.p.parse()
+		s.len += s.p.n - n
+	}
 	if s.current.next != nil {
 		s.current = s.current.next
-		if s.current.next == nil && s.p != nil { // lazy load and parse next data-chunk
-			n := s.p.n
-			s.p.parse()
-			s.len += s.p.n - n
-		}
 		if s.historySize != 0 && s.current.id-s.head.id > s.historySize {
 			t := s.head
 			s.head = s.head.unlink()
