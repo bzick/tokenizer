@@ -309,6 +309,27 @@ func TestIssue30(t *testing.T) {
 	}
 }
 
+// TestIssue44 The parser stops parsing the stream after the first token if
+// its size greater or equal to the size of the parser's buffer.
+func TestIssue44(t *testing.T) {
+	parser := New()
+	parser.AllowKeywordSymbols(Underscore, Numbers)
+
+	// stream with first token close to the size of the parser's internal buffer
+	buf := bytes.NewBufferString("this_token_is_exactly_40_characters_long 67")
+	stream := parser.ParseStream(buf, 40)
+	defer stream.Close()
+
+	require.True(t, stream.IsValid())
+	require.True(t, stream.CurrentToken().IsKeyword())
+	require.Equal(t, "this_token_is_exactly_40_characters_long", stream.CurrentToken().ValueString())
+
+	stream.GoNext()
+	require.True(t, stream.IsValid(), "stream should still be valid after first token")
+	require.True(t, stream.CurrentToken().IsInteger())
+	require.Equal(t, int64(67), stream.CurrentToken().ValueInt64())
+}
+
 func TestStreamOverflow(t *testing.T) {
 	parser := New()
 	buf := bytes.NewBuffer([]byte("a b c"))
