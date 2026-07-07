@@ -158,6 +158,11 @@ func TestTokenizeEdgeCases(t *testing.T) {
 			}},
 			{"\x00", []Token{ // https://github.com/bzick/tokenizer/issues/28
 			}},
+			{".E0", []Token{ // https://github.com/bzick/tokenizer/issues/42
+				{key: TokenUnknown, value: s2b("."), offset: 0, line: 1, id: 0},
+				{key: TokenKeyword, value: s2b("E"), offset: 1, line: 1, id: 1},
+				{key: TokenInteger, value: s2b("0"), offset: 2, line: 1, id: 2},
+			}},
 		}
 		for _, v := range data1 {
 			t.Run(v.str, func(t *testing.T) {

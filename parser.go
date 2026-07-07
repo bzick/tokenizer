@@ -297,7 +297,7 @@ func (p *parsing) parseNumber() bool {
 				if start == -1 { // floats can be started from a pointer
 					start = p.pos
 				}
-			} else if !(nextByte == 'e' || nextByte == 'E' || nextByte == 0) {
+			} else if !((nextByte == 'e' || nextByte == 'E') && hasNumber) && nextByte != 0 {
 				break
 			}
 			floatTraitPos = p.pos
