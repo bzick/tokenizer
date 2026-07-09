@@ -330,6 +330,25 @@ func TestIssue44(t *testing.T) {
 	require.Equal(t, int64(67), stream.CurrentToken().ValueInt64())
 }
 
+// TestIssue44NextToken NextToken should be able to peek the next token even
+// when the first token's size is grreater or equal to the size of the parser's
+// buffer.
+func TestIssue44NextToken(t *testing.T) {
+	parser := New()
+	parser.AllowKeywordSymbols(Underscore, Numbers)
+
+	// stream with first token close to the size of the parser's internal buffer
+	buf := bytes.NewBufferString("this_token_is_exactly_40_characters_long 67")
+	stream := parser.ParseStream(buf, 40)
+	defer stream.Close()
+
+	require.True(t, stream.IsValid())
+	next := stream.NextToken()
+	require.NotEqual(t, undefToken, next, "NextToken should not return undefToken")
+	require.True(t, next.IsInteger())
+	require.Equal(t, int64(67), next.ValueInt64())
+}
+
 func TestStreamOverflow(t *testing.T) {
 	parser := New()
 	buf := bytes.NewBuffer([]byte("a b c"))

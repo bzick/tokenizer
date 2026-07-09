@@ -99,16 +99,20 @@ func (s *Stream) GetParsedLength() int {
 	}
 }
 
-// GoNext moves the stream pointer to the next token.
-// If there is no token, it initiates the parsing of the next chunk of data.
-// If there is no data, the pointer will point to the TokenUndef token.
-func (s *Stream) GoNext() *Stream {
-	// The next token might not have been parsed yet, try to do it now.
-	if s.current.next == nil && s.p != nil {
+// ensureParseNext lazily parses the next chunk of data when the token list ends mid-stream.
+func (s *Stream) ensureParseNext() {
+	if s.current.next == nil && s.current != undefToken && s.p != nil {
 		n := s.p.n
 		s.p.parse()
 		s.len += s.p.n - n
 	}
+}
+
+// GoNext moves the stream pointer to the next token.
+// If there is no token, it initiates the parsing of the next chunk of data.
+// If there is no data, the pointer will point to the TokenUndef token.
+func (s *Stream) GoNext() *Stream {
+	s.ensureParseNext()
 	if s.current.next != nil {
 		s.current = s.current.next
 		if s.historySize != 0 && s.current.id-s.head.id > s.historySize {
@@ -263,6 +267,7 @@ func (s *Stream) PrevToken() *Token {
 // If next token doesn't exist, the method returns TypeUndef token.
 // Do not save a result (Token) into variables — the next token may be changed at any time.
 func (s *Stream) NextToken() *Token {
+	s.ensureParseNext()
 	if s.current.next != nil {
 		return s.current.next
 	}
