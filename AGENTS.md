@@ -41,3 +41,4 @@ keep it fast:
   map lookups or function calls to per-byte loops. Never trade hot-path
   performance for minor readability gains.
 - In prose docs (Markdown, comments), do not hard-wrap lines mid-sentence. Put each sentence (up to its period) on its own line; do not break a line just because it reached some character count.
+- Keep commit messages short and do not add a trailing signature or `Co-Authored-By` line.
