@@ -212,19 +212,9 @@ func (p *parsing) parse() {
 
 func (p *parsing) parseWhitespace() bool {
 	var start = -1
-	for p.curr != 0 {
-		var matched = false
-		for _, ws := range p.t.wSpaces {
-			if p.curr == ws {
-				if start == -1 {
-					start = p.pos
-				}
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			break
+	for p.curr != 0 && p.t.wsTable[p.curr] {
+		if start == -1 {
+			start = p.pos
 		}
 		if p.curr == newLine {
 			p.line++
@@ -242,6 +232,20 @@ func (p *parsing) parseWhitespace() bool {
 func (p *parsing) parseKeyword() bool {
 	var start = -1
 	for p.curr != 0 {
+		// p.curr may be stale after parseNumber rolls back p.pos, so read the byte at p.pos,
+		// like utf8.DecodeRune below does.
+		if c := p.str[p.pos]; c < utf8.RuneSelf { // ASCII fast path: no rune decoding needed
+			if ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
+				runeExists(p.t.kwMajorSymbols, rune(c)) ||
+				(start != -1 && runeExists(p.t.kwMinorSymbols, rune(c))) {
+				if start == -1 {
+					start = p.pos
+				}
+				p.next()
+				continue
+			}
+			break
+		}
 		var r rune
 		var size int
 		p.ensureBytes(4)

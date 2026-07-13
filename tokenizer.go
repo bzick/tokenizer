@@ -130,9 +130,10 @@ type Tokenizer struct {
 	allowNumberUnderscore bool
 	// all defined custom tokens {key: [token1, token2, ...], ...}
 	tokens         map[TokenKey][]*tokenRef
-	index          map[byte][]*tokenRef
+	index          [256][]*tokenRef
 	quotes         []*StringSettings
 	wSpaces        []byte
+	wsTable        [256]bool
 	kwMajorSymbols []rune
 	kwMinorSymbols []rune
 	pool           sync.Pool
@@ -142,11 +143,10 @@ type Tokenizer struct {
 func New() *Tokenizer {
 	t := Tokenizer{
 		// flags:   0,
-		tokens:  map[TokenKey][]*tokenRef{},
-		index:   map[byte][]*tokenRef{},
-		quotes:  []*StringSettings{},
-		wSpaces: DefaultWhiteSpaces,
+		tokens: map[TokenKey][]*tokenRef{},
+		quotes: []*StringSettings{},
 	}
+	t.SetWhiteSpaces(DefaultWhiteSpaces)
 	t.pool.New = func() interface{} {
 		return new(Token)
 	}
@@ -157,6 +157,10 @@ func New() *Tokenizer {
 // By default: `{' ', '\t', '\n', '\r'}`
 func (t *Tokenizer) SetWhiteSpaces(ws []byte) *Tokenizer {
 	t.wSpaces = ws
+	t.wsTable = [256]bool{}
+	for _, b := range ws {
+		t.wsTable[b] = true
+	}
 	return t
 }
 
@@ -221,9 +225,6 @@ func (t *Tokenizer) DefineTokens(key TokenKey, tokens []string) *Tokenizer {
 		}
 		head := ref.Token[0]
 		tks = append(tks, &ref)
-		if t.index[head] == nil {
-			t.index[head] = []*tokenRef{}
-		}
 		t.index[head] = append(t.index[head], &ref)
 		sort.Slice(t.index[head], func(i, j int) bool {
 			return len(t.index[head][i].Token) > len(t.index[head][j].Token)
