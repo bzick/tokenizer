@@ -4,4 +4,7 @@ lint:
 test:
 	go test -v ./...
 
-.PHONY: lint test
+bench:
+	go test -run=^$$ -bench=. -benchmem ./...
+
+.PHONY: lint test bench
