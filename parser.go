@@ -285,43 +285,42 @@ func (p *parsing) parseNumber() bool {
 			}
 			end = p.pos
 			hasNumber = true
-		} else {
+		} else if p.curr == '_' {
+			if !hasNumber || (!p.t.allowNumberUnderscore || !isNumberByte(p.nextByte())) {
+				break
+			}
+		} else if p.curr == '.' {
 			nextByte := p.nextByte()
-			if p.curr == '_' {
-				if !hasNumber || (!p.t.allowNumberUnderscore || !isNumberByte(nextByte)) {
-					break
+			if hasPoint {
+				break
+			} else if isNumberByte(nextByte) {
+				if start == -1 { // floats can be started from a pointer
+					start = p.pos
 				}
-			} else if p.curr == '.' {
-				if hasPoint {
-					break
-				} else if isNumberByte(nextByte) {
-					if start == -1 { // floats can be started from a pointer
-						start = p.pos
-					}
-				} else if !(nextByte == 'e' || nextByte == 'E' || nextByte == 0) {
-					break
-				}
-				floatTraitPos = p.pos
-				end = p.pos
-				hasPoint = true
-			} else if p.curr == 'e' || p.curr == 'E' {
-				if !hasNumber || !(isNumberByte(nextByte) || nextByte == '-' || nextByte == '+') || hasExp {
-					break
-				}
-				floatTraitPos = p.pos
-				hasExp = true
-				hasPoint = true
-			} else if hasExp && (p.curr == '-' || p.curr == '+') {
-				if isNumberByte(nextByte) {
-					if start == -1 { // numbers can be started from a sign
-						start = p.pos
-					}
-				} else {
-					break
+			} else if !(nextByte == 'e' || nextByte == 'E' || nextByte == 0) {
+				break
+			}
+			floatTraitPos = p.pos
+			end = p.pos
+			hasPoint = true
+		} else if p.curr == 'e' || p.curr == 'E' {
+			nextByte := p.nextByte()
+			if !hasNumber || !(isNumberByte(nextByte) || nextByte == '-' || nextByte == '+') || hasExp {
+				break
+			}
+			floatTraitPos = p.pos
+			hasExp = true
+			hasPoint = true
+		} else if hasExp && (p.curr == '-' || p.curr == '+') {
+			if isNumberByte(p.nextByte()) {
+				if start == -1 { // numbers can be started from a sign
+					start = p.pos
 				}
 			} else {
 				break
 			}
+		} else {
+			break
 		}
 		p.next()
 	}
