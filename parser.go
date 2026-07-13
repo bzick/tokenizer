@@ -384,6 +384,13 @@ func (p *parsing) parseQuote() bool {
 	p.token.key = TokenString
 	p.token.offset = p.offset + start
 	p.token.string = quote
+	var injectTokens [][]*tokenRef
+	if len(quote.Injects) > 0 {
+		injectTokens = make([][]*tokenRef, len(quote.Injects))
+		for i, inject := range quote.Injects {
+			injectTokens[i] = p.t.tokens[inject.StartKey]
+		}
+	}
 	escapes := false
 	for p.curr != 0 {
 		if escapes {
@@ -394,8 +401,8 @@ func (p *parsing) parseQuote() bool {
 			break
 		} else if quote.Injects != nil {
 			loop := true
-			for _, inject := range quote.Injects {
-				for _, token := range p.t.tokens[inject.StartKey] {
+			for i, inject := range quote.Injects {
+				for _, token := range injectTokens[i] {
 					if p.match(token.Token, true) {
 						p.token.key = TokenStringFragment
 						p.token.value = p.str[start : p.pos-len(token.Token)]
