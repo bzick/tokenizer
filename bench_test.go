@@ -2,7 +2,6 @@ package tokenizer
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 )
 
@@ -190,8 +189,4 @@ func BenchmarkStreamString(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		sinkStr = st.String()
 	}
-}
-
-func init() {
-	_ = strings.Repeat // keep import
 }
