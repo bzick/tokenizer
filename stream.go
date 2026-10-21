@@ -219,15 +219,8 @@ func (s *Stream) IsAnyNextSequence(keys ...[]TokenKey) bool {
 	}
 
 	start := s.current
-	for _, key := range keys {
-		found := false
-		for _, k := range key {
-			if s.GoNext().CurrentToken().Is(k) {
-				found = true
-				break
-			}
-		}
-		if !found {
+	for _, group := range keys {
+		if len(group) == 0 || !s.GoNext().CurrentToken().Is(group[0], group[1:]...) {
 			result = false
 			break
 		}

@@ -170,6 +170,20 @@ func TestSequenceWithHistory(t *testing.T) {
 
 }
 
+func TestIsAnyNextSequenceAlternatives(t *testing.T) {
+	stream := New().ParseString("a 1.5 b")
+
+	// the matching key of a group is not the first one
+	require.True(t, stream.IsAnyNextSequence([]TokenKey{TokenInteger, TokenFloat}, []TokenKey{TokenKeyword}))
+	require.True(t, stream.IsAnyNextSequence([]TokenKey{TokenString, TokenInteger, TokenFloat}, []TokenKey{TokenFloat, TokenKeyword}))
+	require.Equal(t, 0, stream.CurrentToken().ID())
+
+	require.False(t, stream.IsAnyNextSequence([]TokenKey{TokenInteger, TokenString}, []TokenKey{TokenKeyword}))
+	require.False(t, stream.IsAnyNextSequence([]TokenKey{TokenInteger, TokenFloat}, []TokenKey{TokenInteger, TokenFloat}))
+	require.False(t, stream.IsAnyNextSequence([]TokenKey{}, []TokenKey{TokenFloat}))
+	require.Equal(t, 0, stream.CurrentToken().ID())
+}
+
 func TestInfStream(t *testing.T) {
 	buffer := bytes.NewBuffer(nil)
 	for i := 0; i < 100; i++ {
