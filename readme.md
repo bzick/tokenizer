@@ -2,7 +2,6 @@
 
 [![Build Status](https://github.com/bzick/tokenizer/actions/workflows/tokenizer.yml/badge.svg)](https://github.com/bzick/tokenizer/actions/workflows/tokenizer.yml)
 [![codecov](https://codecov.io/gh/bzick/tokenizer/branch/master/graph/badge.svg?token=MFY5NWATGC)](https://codecov.io/gh/bzick/tokenizer)
-[![Go Report Card](https://goreportcard.com/badge/github.com/bzick/tokenizer?rnd=2)](https://goreportcard.com/report/github.com/bzick/tokenizer)
 [![GoDoc](https://godoc.org/github.com/bzick/tokenizer?status.svg)](https://godoc.org/github.com/bzick/tokenizer)
 
 High-performance, generic tokenizer (lexer) for Go.
