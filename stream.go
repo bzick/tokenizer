@@ -101,7 +101,14 @@ func (s *Stream) GetParsedLength() int {
 
 // ensureParseNext lazily parses the next chunk of data when the token list ends mid-stream.
 func (s *Stream) ensureParseNext() {
-	if s.current.next == nil && s.current != undefToken && s.p != nil {
+	if s.current != undefToken {
+		s.ensureParsedAfter(s.current)
+	}
+}
+
+// ensureParsedAfter lazily parses the next chunk of data when the token list ends at the token t mid-stream.
+func (s *Stream) ensureParsedAfter(t *Token) {
+	if t.next == nil && s.p != nil {
 		n := s.p.n
 		s.p.parse()
 		s.len += s.p.n - n
@@ -111,6 +118,7 @@ func (s *Stream) ensureParseNext() {
 // GoNext moves the stream pointer to the next token.
 // If there is no token, it initiates the parsing of the next chunk of data.
 // If there is no data, the pointer will point to the TokenUndef token.
+// If the pointer is before the beginning of the stream (see GoPrev), it moves to the first token.
 func (s *Stream) GoNext() *Stream {
 	s.ensureParseNext()
 	if s.current.next != nil {
@@ -122,55 +130,75 @@ func (s *Stream) GoNext() *Stream {
 			s.len--
 		}
 	} else if s.current == undefToken {
-		s.current = s.prev
-		s.prev = nil
+		if s.next != nil { // before the beginning of the stream: step back to the first token
+			s.current = s.next
+			s.next = nil
+		}
+		// beyond the end of the stream: stay there
 	} else {
 		s.prev = s.current
+		s.next = nil
 		s.current = undefToken
 	}
 	return s
 }
 
-// GoPrev moves the pointer of stream to the next token.
+// GoPrev moves the pointer of stream to the previous token.
 // The number of possible calls is limited if you specified SetHistorySize.
 // If the beginning of the stream or the end of the history is reached, the pointer will point to the TokenUndef token.
+// If the pointer is beyond the end of the stream (see GoNext), it moves to the last token.
 func (s *Stream) GoPrev() *Stream {
 	if s.current.prev != nil {
 		s.current = s.current.prev
 	} else if s.current == undefToken {
-		s.current = s.next
-		s.prev = nil
+		if s.prev != nil { // beyond the end of the stream: step back to the last token
+			s.current = s.prev
+			s.prev = nil
+		}
+		// before the beginning of the stream: stay there
 	} else {
 		s.next = s.current
+		s.prev = nil
 		s.current = undefToken
 	}
 	return s
 }
 
-// GoTo moves the pointer of stream to specific token.
+// GoTo moves the pointer of stream to the token with the specific id.
+// If there is no such token (it is beyond the end of the stream or before the beginning of the history), the pointer is not moved.
 func (s *Stream) GoTo(id int) *Stream {
-	if s.current == undefToken {
-		if s.prev != nil && id <= s.prev.id { // we at the end of the stream
-			s.GoPrev() // now current is available
-			for s.current != nil && id != s.current.id {
-				s.GoPrev()
-			}
-		} else if s.next != nil && id >= s.prev.id { // we at the beginning of the stream
-			s.GoNext() // now current is available
-			for s.current != nil && id != s.current.id {
-				s.GoNext()
-			}
+	// search without moving the pointer: GoNext frees the history behind the pointer, so the old position could not be restored
+	ptr := s.current
+	if ptr == undefToken {
+		if s.prev != nil { // beyond the end of the stream
+			ptr = s.prev
+		} else if s.next != nil { // before the beginning of the stream
+			ptr = s.next
+		} else { // empty stream
+			return s
 		}
+	}
+	for id < ptr.id && ptr.prev != nil {
+		ptr = ptr.prev
+	}
+	for id > ptr.id {
+		s.ensureParsedAfter(ptr)
+		if ptr.next == nil {
+			break
+		}
+		ptr = ptr.next
+	}
+	if ptr.id != id {
 		return s
 	}
-	if id > s.current.id {
-		for s.current != nil && id != s.current.id {
-			s.GoNext()
-		}
-	} else if id < s.current.id {
-		for s.current != nil && id != s.current.id {
-			s.GoPrev()
-		}
+	s.current = ptr
+	s.prev = nil
+	s.next = nil
+	for s.historySize != 0 && s.current.id-s.head.id > s.historySize {
+		t := s.head
+		s.head = s.head.unlink()
+		s.t.freeToken(t)
+		s.len--
 	}
 	return s
 }
@@ -192,14 +220,14 @@ func (s *Stream) IsNextSequence(keys ...TokenKey) bool {
 		s.historySize = len(keys)
 	}
 
-	start := s.current
+	start, prev, next := s.current, s.prev, s.next
 	for _, key := range keys {
 		if !s.GoNext().CurrentToken().Is(key) {
 			result = false
 			break
 		}
 	}
-	s.current = start
+	s.current, s.prev, s.next = start, prev, next
 
 	if hSize != 0 {
 		s.SetHistorySize(hSize)
@@ -218,7 +246,7 @@ func (s *Stream) IsAnyNextSequence(keys ...[]TokenKey) bool {
 		s.historySize = len(keys)
 	}
 
-	start := s.current
+	start, prev, next := s.current, s.prev, s.next
 	for _, key := range keys {
 		found := false
 		for _, k := range key {
@@ -232,7 +260,7 @@ func (s *Stream) IsAnyNextSequence(keys ...[]TokenKey) bool {
 			break
 		}
 	}
-	s.current = start
+	s.current, s.prev, s.next = start, prev, next
 
 	if hSize != 0 {
 		s.SetHistorySize(hSize)

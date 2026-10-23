@@ -193,6 +193,68 @@ func TestTokenizeEdgeCases(t *testing.T) {
 	})
 }
 
+// TestNumberRollback the bytes after a number that are not a part of it (like "E+" in "0E+") are parsed as the next tokens.
+func TestNumberRollback(t *testing.T) {
+	plusKey := TokenKey(1)
+	parser := New()
+	parser.DefineTokens(plusKey, []string{"+"})
+
+	stream := parser.ParseString("0E+")
+	defer stream.Close()
+	require.Equal(t, []Token{
+		{key: TokenInteger, value: s2b("0"), offset: 0, line: 1, id: 0},
+		{key: TokenKeyword, value: s2b("E"), offset: 1, line: 1, id: 1},
+		{key: plusKey, value: s2b("+"), offset: 2, line: 1, id: 2},
+	}, stream.GetSnippet(10, 10))
+}
+
+// TestInjectionBounds the byte right after an injection is parsed as a part of the string, and a string that ends inside or right after an injection doesn't panic.
+func TestInjectionBounds(t *testing.T) {
+	const (
+		openKey TokenKey = iota + 1
+		closeKey
+		quoteKey
+	)
+	parser := New()
+	parser.DefineTokens(openKey, []string{"{{"})
+	parser.DefineTokens(closeKey, []string{"}}"})
+	parser.DefineStringToken(quoteKey, `"`, `"`).SetEscapeSymbol('\\').AddInjection(openKey, closeKey)
+
+	type tok struct {
+		key   TokenKey
+		value string
+	}
+	data := map[string][]tok{
+		`"a {{ b }}" c`: {
+			{TokenStringFragment, `"a `}, {openKey, "{{"}, {TokenKeyword, "b"}, {closeKey, "}}"}, {TokenStringFragment, `"`},
+			{TokenKeyword, "c"},
+		},
+		`"a {{ b }}{{ c }}" d`: {
+			{TokenStringFragment, `"a `}, {openKey, "{{"}, {TokenKeyword, "b"}, {closeKey, "}}"}, {TokenStringFragment, ``},
+			{openKey, "{{"}, {TokenKeyword, "c"}, {closeKey, "}}"}, {TokenStringFragment, `"`},
+			{TokenKeyword, "d"},
+		},
+		`"a {{`: {
+			{TokenStringFragment, `"a `}, {openKey, "{{"}, {TokenStringFragment, ``},
+		},
+		`"a {{ b`: {
+			{TokenStringFragment, `"a `}, {openKey, "{{"}, {TokenKeyword, "b"}, {TokenStringFragment, ``},
+		},
+		`"a {{ b }}`: {
+			{TokenStringFragment, `"a `}, {openKey, "{{"}, {TokenKeyword, "b"}, {closeKey, "}}"}, {TokenStringFragment, ``},
+		},
+	}
+	for str, expected := range data {
+		stream := parser.ParseString(str)
+		var actual []tok
+		for ; stream.IsValid(); stream.GoNext() {
+			actual = append(actual, tok{stream.CurrentToken().Key(), stream.CurrentToken().ValueString()})
+		}
+		require.Equalf(t, expected, actual, "parse %s", str)
+		stream.Close()
+	}
+}
+
 func TestTokenizeComplex(t *testing.T) {
 	tokenizer := New()
 	compareTokenKey := TokenKey(10)
