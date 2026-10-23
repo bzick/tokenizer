@@ -395,7 +395,7 @@ The `*Stream` is a bidirectional iterator over the parsed tokens. Common methods
 | `IsValid() bool` | `true` while the pointer is on a real token. |
 | `GoNext() *Stream` | Move to the next token (loads the next chunk in stream mode). |
 | `GoPrev() *Stream` | Move to the previous token (bounded by `SetHistorySize`). |
-| `GoTo(id int) *Stream` | Move to a token by its id. |
+| `GoTo(id int) *Stream` | Move to a token by its id (the pointer is not moved if there is no such token). |
 | `CurrentToken() *Token` | The current token (a `TokenUndef` token when out of range). |
 | `NextToken() / PrevToken() *Token` | Peek without moving the pointer. |
 | `GoNextIfNextIs(key, ...) bool` | Advance only if the next token matches. |

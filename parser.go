@@ -46,12 +46,11 @@ func newInfParser(t *Tokenizer, reader io.Reader, bufferSize uint) *parsing {
 	if bufferSize == 0 {
 		bufferSize = DefaultChunkSize
 	}
-	buffer := make([]byte, bufferSize)
 	tok := t.allocToken()
 	tok.line = 1
 	return &parsing{
 		t:         t,
-		str:       buffer,
+		str:       make([]byte, 0, bufferSize), // the first chunk is read by the first parse() call
 		reader:    reader,
 		line:      1,
 		chunkSize: int(bufferSize),
@@ -59,15 +58,14 @@ func newInfParser(t *Tokenizer, reader io.Reader, bufferSize uint) *parsing {
 	}
 }
 
+// ensureBytes makes sure that the byte at p.pos+n is loaded.
+// A reader may return less data than requested, so chunks are loaded until there is enough data or the stream ends.
 func (p *parsing) ensureBytes(n int) bool {
-	if p.pos+n >= len(p.str) {
-		if p.reader != nil {
-			p.loadChunk()
-			if p.pos+n < len(p.str) {
-				return true
-			}
+	for p.pos+n >= len(p.str) {
+		if p.reader == nil {
+			return false
 		}
-		return false
+		p.loadChunk()
 	}
 	return true
 }
@@ -90,48 +88,38 @@ func (p *parsing) nextByte() byte {
 	return 0
 }
 
-func (p *parsing) slice(from, to int) []byte {
-	if to < len(p.str) {
-		return p.str[from:to]
-	}
-	return p.str[from:]
-}
+// maxEmptyReads is the number of consecutive empty reads (0, nil) after which the reader is treated as broken, like in bufio.
+const maxEmptyReads = 100
 
-func (p *parsing) preload() {
-	n, err := p.reader.Read(p.str)
-	if n < p.chunkSize {
-		p.str = p.str[:n]
-		p.reader = nil
-	}
-	if err != nil {
-		p.reader = nil
-		if err != io.EOF {
-			p.err = err
-		}
-	}
-}
-
+// loadChunk reads the next portion of data from the reader and appends it to p.str.
+// A short read is not the end of the data: the stream ends only when the reader returns an error (io.EOF included).
+// Returns the number of loaded bytes; zero means the end of the stream.
 func (p *parsing) loadChunk() int {
-	// chunk size = new chunk size + size of tail of prev chunk
-	chunk := make([]byte, len(p.str)+p.chunkSize)
-	copy(chunk, p.str)
-	n, err := p.reader.Read(chunk[len(p.str):])
-
-	if n < p.chunkSize {
-		p.str = chunk[:len(p.str)+n]
-		p.reader = nil
-	} else {
+	if len(p.str) == cap(p.str) {
+		// chunk size = new chunk size + size of tail of prev chunk.
+		// The old buffer is not reused because the parsed tokens point into it.
+		chunk := make([]byte, len(p.str), len(p.str)+p.chunkSize)
+		copy(chunk, p.str)
 		p.str = chunk
 	}
-
-	if err != nil {
-		p.reader = nil
-		if err != io.EOF {
-			p.err = err
+	p.resume = false
+	for i := 0; i < maxEmptyReads; i++ {
+		n, err := p.reader.Read(p.str[len(p.str):cap(p.str)])
+		p.str = p.str[:len(p.str)+n]
+		if err != nil {
+			p.reader = nil
+			if err != io.EOF {
+				p.err = err
+			}
+			return n
+		}
+		if n > 0 {
+			return n
 		}
 	}
-	p.resume = false
-	return n
+	p.reader = nil
+	p.err = io.ErrNoProgress
+	return 0
 }
 
 // checkPoint reset internal values for next chunk of data
@@ -157,7 +145,8 @@ func (p *parsing) parse() {
 	}
 	p.curr = p.str[p.pos]
 	p.resume = true
-	for p.checkPoint() {
+	// a loaded chunk stops parsing after the current token (lazy parsing), but an injection (p.stopKeys) is parsed up to its end token.
+	for p.checkPoint() || p.stopKeys != nil {
 		if p.stopKeys != nil {
 			for _, t := range p.stopKeys {
 				if p.ptr.key == t.Key {
@@ -248,8 +237,10 @@ func (p *parsing) parseKeyword() bool {
 		}
 		var r rune
 		var size int
-		p.ensureBytes(4)
-		r, size = utf8.DecodeRune(p.slice(p.pos, p.pos+4))
+		for p.reader != nil && !utf8.FullRune(p.str[p.pos:]) { // the rune may be split between chunks
+			p.loadChunk()
+		}
+		r, size = utf8.DecodeRune(p.str[p.pos:])
 		if unicode.IsLetter(r) || runeExists(p.t.kwMajorSymbols, r) || (start != -1 && runeExists(p.t.kwMinorSymbols, r)) {
 			if start == -1 {
 				start = p.pos
@@ -328,7 +319,10 @@ func (p *parsing) parseNumber() bool {
 		return false
 	}
 	end = end + 1
-	p.pos = end
+	if p.pos != end { // roll back the bytes that are not a part of the number, e.g. "e+" in "1e+"
+		p.pos = end
+		p.curr = p.str[end]
+	}
 	p.token.value = p.str[start:end]
 	if floatTraitPos == -1 || floatTraitPos > end-1 {
 		p.token.key = TokenInteger
@@ -392,6 +386,7 @@ func (p *parsing) parseQuote() bool {
 		}
 	}
 	escapes := false
+chars:
 	for p.curr != 0 {
 		if escapes {
 			escapes = false
@@ -400,7 +395,6 @@ func (p *parsing) parseQuote() bool {
 		} else if p.match(quote.EndToken, true) {
 			break
 		} else if quote.Injects != nil {
-			loop := true
 			for i, inject := range quote.Injects {
 				for _, token := range injectTokens[i] {
 					if p.match(token.Token, true) {
@@ -419,12 +413,9 @@ func (p *parsing) parseQuote() bool {
 						p.token.offset = p.offset + p.pos
 						p.token.string = quote
 						start = p.pos
-						loop = false
-						break
+						// p.curr is the first byte after the injection (or 0 at the end of data): check it, don't skip it
+						continue chars
 					}
-				}
-				if !loop {
-					break
 				}
 			}
 		}

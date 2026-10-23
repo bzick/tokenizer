@@ -2,8 +2,12 @@ package tokenizer
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
+	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/stretchr/testify/require"
@@ -358,6 +362,282 @@ func TestStreamOverflow(t *testing.T) {
 
 	require.False(t, stream.IsNextSequence(TokenKeyword, TokenKeyword, TokenKeyword, TokenKeyword))
 	require.False(t, stream.IsNextSequence(TokenKeyword, TokenKeyword, TokenKeyword, TokenKeyword))
+}
+
+// streamToken is a comparable copy of a token without the links of the token list.
+type streamToken struct {
+	id     int
+	key    TokenKey
+	value  string
+	line   int
+	offset int
+	indent string
+	string *StringSettings
+}
+
+func collectTokens(stream *Stream) []streamToken {
+	var tokens []streamToken
+	for stream.IsValid() {
+		c := stream.CurrentToken()
+		tokens = append(tokens, streamToken{c.id, c.key, string(c.value), c.line, c.offset, string(c.indent), c.string})
+		stream.GoNext()
+	}
+	return tokens
+}
+
+// TestStreamLargerThanChunk parses a stream that is many times larger than the parser's buffer.
+func TestStreamLargerThanChunk(t *testing.T) {
+	const commaKey = TokenKey(1)
+	parser := New()
+	parser.DefineTokens(commaKey, []string{","})
+
+	for _, repeat := range []int{5, 5000} {
+		for _, size := range []uint{4, 16, 64, 4096} {
+			stream := parser.ParseStream(strings.NewReader(strings.Repeat("a, ", repeat)), size)
+			n := 0
+			for ; stream.IsValid(); n++ {
+				if n%2 == 0 {
+					require.Truef(t, stream.CurrentToken().IsKeyword(), "repeat %d, buffer size %d, token %d", repeat, size, n)
+					require.Equal(t, "a", stream.CurrentToken().ValueString())
+				} else {
+					require.Truef(t, stream.CurrentToken().Is(commaKey), "repeat %d, buffer size %d, token %d", repeat, size, n)
+				}
+				stream.GoNext()
+			}
+			require.Equalf(t, 2*repeat, n, "repeat %d, buffer size %d", repeat, size)
+			stream.Close()
+		}
+	}
+}
+
+// TestStreamChunkBoundaries checks that a stream produces exactly the same tokens as the in-memory parser when tokens, runes, numbers, strings with injections and whitespaces cross chunk boundaries.
+// Readers that return less data than requested (like pipes and sockets) are checked too.
+func TestStreamChunkBoundaries(t *testing.T) {
+	parser := newBenchTokenizer()
+	parser.DefineTokens(100, []string{"или"})
+	parser.DefineStringToken(101, `<![CDATA[`, `]]>`)
+
+	inputs := map[string]string{
+		"tokens":     strings.Repeat("a, ", 50),
+		"mixed":      string(benchSource(3)),
+		"injections": strings.Repeat(`x = "value2 {{ value3 }} value4"; "{{ a }}{{ b }}"; `, 10) + `"tail {{ c`,
+		"unicode":    strings.Repeat("привет или мир, функция\n", 10),
+		"numbers":    strings.Repeat("1.5e10 2_000 .5 3E-2 1e+ 7. ", 10),
+		"operators":  strings.Repeat("a <= b >= c == d != e <![CDATA[ socks ]]> ", 10),
+		"whitespace": "  \n\t trailing ws \n\n  ",
+	}
+	readers := map[string]func(string) io.Reader{
+		"full":    func(s string) io.Reader { return strings.NewReader(s) },
+		"half":    func(s string) io.Reader { return iotest.HalfReader(strings.NewReader(s)) },
+		"onebyte": func(s string) io.Reader { return iotest.OneByteReader(strings.NewReader(s)) },
+	}
+	sizes := []uint{4096}
+	for size := uint(1); size <= 64; size++ {
+		sizes = append(sizes, size)
+	}
+
+	for name, input := range inputs {
+		expected := parser.ParseString(input)
+		expectedTokens := collectTokens(expected)
+		for readerName, reader := range readers {
+			for _, size := range sizes {
+				stream := parser.ParseStream(reader(input), size)
+				require.Equalf(t, expectedTokens, collectTokens(stream), "input %s, reader %s, buffer size %d", name, readerName, size)
+				require.Equalf(t, expected.GetParsedLength(), stream.GetParsedLength(), "input %s, reader %s, buffer size %d", name, readerName, size)
+				stream.Close()
+			}
+		}
+		expected.Close()
+	}
+}
+
+// stutterReader returns (0, nil) several times before each byte of data.
+type stutterReader struct {
+	data   []byte
+	empty  int
+	misses int
+}
+
+func (r *stutterReader) Read(p []byte) (int, error) {
+	if len(r.data) == 0 {
+		return 0, io.EOF
+	}
+	if r.misses < r.empty || len(p) == 0 {
+		r.misses++
+		return 0, nil
+	}
+	r.misses = 0
+	p[0] = r.data[0]
+	r.data = r.data[1:]
+	return 1, nil
+}
+
+type noProgressReader struct{}
+
+func (noProgressReader) Read([]byte) (int, error) {
+	return 0, nil
+}
+
+// TestStreamReaders checks readers that return no data or an error.
+func TestStreamReaders(t *testing.T) {
+	parser := New()
+
+	stream := parser.ParseStream(&stutterReader{data: []byte("one two three"), empty: 3}, 4)
+	require.Equal(t, []string{"one", "two", "three"}, streamValues(stream))
+	stream.Close()
+
+	// a reader that never returns data must not hang the stream
+	stream = parser.ParseStream(noProgressReader{}, 4)
+	require.False(t, stream.IsValid())
+	stream.Close()
+
+	// the stream ends on a read error with the tokens parsed before it
+	stream = parser.ParseStream(iotest.TimeoutReader(strings.NewReader("one two three")), 8)
+	require.Equal(t, []string{"one", "two"}, streamValues(stream))
+	stream.Close()
+
+	stream = parser.ParseStream(iotest.DataErrReader(strings.NewReader("one two three")), 4)
+	require.Equal(t, []string{"one", "two", "three"}, streamValues(stream))
+	stream.Close()
+
+	stream = parser.ParseStream(iotest.ErrReader(errors.New("broken")), 4)
+	require.False(t, stream.IsValid())
+	stream.Close()
+}
+
+func streamValues(stream *Stream) []string {
+	var values []string
+	for stream.IsValid() {
+		values = append(values, stream.CurrentToken().ValueString())
+		stream.GoNext()
+	}
+	return values
+}
+
+// goTo calls stream.GoTo and fails the test if it does not return.
+func goTo(t *testing.T, stream *Stream, id int) *Stream {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		stream.GoTo(id)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatalf("GoTo(%d) did not return", id)
+	}
+	return stream
+}
+
+// TestStreamGoTo GoTo moves the pointer to the token with the given id and doesn't move it if there is no such token.
+func TestStreamGoTo(t *testing.T) {
+	parser := New()
+	stream := parser.ParseString("a b c") // ids 0..2
+	defer stream.Close()
+
+	require.Equal(t, 2, goTo(t, stream, 2).CurrentToken().ID())
+	require.Equal(t, 0, goTo(t, stream, 0).CurrentToken().ID())
+	require.Equal(t, 1, goTo(t, stream, 1).CurrentToken().ID())
+	for _, id := range []int{3, 100, -1, -5} {
+		require.Equalf(t, 1, goTo(t, stream, id).CurrentToken().ID(), "GoTo(%d)", id)
+	}
+
+	// beyond the end of the stream
+	stream.GoNext().GoNext()
+	require.False(t, stream.IsValid())
+	for _, id := range []int{3, 100, -1, -5} {
+		require.Falsef(t, goTo(t, stream, id).IsValid(), "GoTo(%d)", id)
+	}
+	require.Equal(t, 2, stream.GoPrev().CurrentToken().ID())
+	stream.GoNext()
+	require.Equal(t, 1, goTo(t, stream, 1).CurrentToken().ID())
+
+	// before the beginning of the stream
+	stream.GoPrev().GoPrev()
+	require.False(t, stream.IsValid())
+	for _, id := range []int{3, 100, -1, -5} {
+		require.Falsef(t, goTo(t, stream, id).IsValid(), "GoTo(%d)", id)
+	}
+	require.Equal(t, 0, stream.GoNext().CurrentToken().ID())
+	stream.GoPrev()
+	require.Equal(t, 2, goTo(t, stream, 2).CurrentToken().ID())
+
+	empty := parser.ParseString("")
+	defer empty.Close()
+	require.False(t, goTo(t, empty, 0).IsValid())
+}
+
+// TestStreamGoToInfinite GoTo parses the next chunks lazily and keeps all tokens when there is no such token.
+func TestStreamGoToInfinite(t *testing.T) {
+	parser := New()
+	stream := parser.ParseStream(strings.NewReader(strings.Repeat("a ", 100)), 4) // ids 0..99
+	defer stream.Close()
+
+	require.Equal(t, 0, goTo(t, stream, 100).CurrentToken().ID())
+	n := 0
+	for ; stream.IsValid(); n++ {
+		require.Equal(t, n, stream.CurrentToken().ID())
+		stream.GoNext()
+	}
+	require.Equal(t, 100, n)
+	require.Equal(t, 0, goTo(t, stream, 0).CurrentToken().ID())
+	require.Equal(t, 99, goTo(t, stream, 99).CurrentToken().ID())
+	require.Equal(t, 99, goTo(t, stream, 100).CurrentToken().ID())
+}
+
+// TestStreamGoToHistory GoTo frees the history behind the new position only, and stays if the token is before the beginning of the history.
+func TestStreamGoToHistory(t *testing.T) {
+	parser := New()
+	stream := parser.ParseString("0 1 2 3 4 5 6 7 8 9").SetHistorySize(3)
+	defer stream.Close()
+
+	stream.GoNext()
+	require.Equal(t, 1, goTo(t, stream, 100).CurrentToken().ID())
+	require.Equal(t, 0, stream.HeadToken().ID())
+	require.Equal(t, int64(0), stream.GoPrev().CurrentToken().ValueInt64())
+
+	require.Equal(t, 9, goTo(t, stream, 9).CurrentToken().ID())
+	require.Equal(t, 6, stream.HeadToken().ID())
+	require.Equal(t, 4, stream.len)
+	require.Equal(t, 9, goTo(t, stream, 0).CurrentToken().ID())
+	require.Equal(t, 6, goTo(t, stream, 6).CurrentToken().ID())
+
+	stream = parser.ParseStream(strings.NewReader(strings.Repeat("a ", 100)), 4).SetHistorySize(5)
+	defer stream.Close()
+	require.Equal(t, 50, goTo(t, stream, 50).CurrentToken().ID())
+	require.Equal(t, 45, stream.HeadToken().ID())
+	require.Equal(t, 50, goTo(t, stream, 44).CurrentToken().ID())
+}
+
+// TestStreamBounds GoNext and GoPrev stay out of the stream once they cross its bounds and step back with the opposite move.
+func TestStreamBounds(t *testing.T) {
+	parser := New()
+	stream := parser.ParseString("a b c")
+	defer stream.Close()
+
+	stream.GoNext().GoNext().GoNext()
+	require.False(t, stream.IsValid())
+	require.False(t, stream.GoNext().IsValid())
+	require.Equal(t, 2, stream.GoPrev().CurrentToken().ID())
+
+	stream.GoTo(0).GoPrev()
+	require.False(t, stream.IsValid())
+	require.False(t, stream.GoPrev().IsValid())
+	require.Equal(t, 0, stream.GoNext().CurrentToken().ID())
+
+	// a look-ahead before the beginning of the stream keeps the position
+	stream.GoPrev()
+	require.True(t, stream.IsNextSequence(TokenKeyword, TokenKeyword, TokenKeyword))
+	require.False(t, stream.IsAnyNextSequence([]TokenKey{TokenKeyword}, []TokenKey{TokenInteger}))
+	require.False(t, stream.IsValid())
+	require.Equal(t, 0, stream.GoNext().CurrentToken().ID())
+
+	empty := parser.ParseString("")
+	defer empty.Close()
+	require.False(t, goTo(t, empty, 0).IsValid())
+	require.False(t, empty.GoNext().IsValid())
+	require.False(t, empty.GoPrev().IsValid())
 }
 
 func TestIssue7(t *testing.T) {

@@ -290,7 +290,6 @@ func (t *Tokenizer) ParseBytes(str []byte) *Stream {
 // ParseStream parse and convert infinite stream of bytes into infinite stream of tokens.
 func (t *Tokenizer) ParseStream(r io.Reader, bufferSize uint) *Stream {
 	p := newInfParser(t, r, bufferSize)
-	p.preload()
 	p.parse()
 	return NewInfStream(p)
 }
